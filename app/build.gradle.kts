@@ -63,4 +63,8 @@ dependencies {
     // Hoặc nếu bạn dùng file build.gradle (Groovy DSL)
     implementation ("androidx.navigation:navigation-compose:2.8.0-beta05")
 
+    // Thư viện cho hiệu ứng chuyển cảnh Navigation
+    implementation("com.google.accompanist:accompanist-navigation-animation:0.34.0")
+
+
 }
