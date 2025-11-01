@@ -56,4 +56,11 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // Dành cho file build.gradle.kts (Kotlin DSL)
+    implementation("androidx.navigation:navigation-compose:2.8.0-beta05")
+
+    // Hoặc nếu bạn dùng file build.gradle (Groovy DSL)
+    implementation ("androidx.navigation:navigation-compose:2.8.0-beta05")
+
 }

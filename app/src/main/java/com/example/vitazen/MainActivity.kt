@@ -7,10 +7,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import com.example.vitazen.navigation.AppNavGraph // <--- 1. Import AppNavGraph
 import com.example.vitazen.ui.theme.VitaZenTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,29 +19,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             VitaZenTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                // Chúng ta sẽ dùng Surface thay vì Scaffold để AppNavGraph kiểm soát toàn bộ màn hình
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    AppNavGraph() // <--- 2. Gọi AppNavGraph ở đây
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    VitaZenTheme {
-        Greeting("Android")
     }
 }
