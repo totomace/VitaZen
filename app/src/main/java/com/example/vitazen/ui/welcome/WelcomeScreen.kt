@@ -1,7 +1,6 @@
 package com.example.vitazen.ui.welcome
 
-import androidx.compose.animation.core.Animatable
-// Thêm các import cần thiết cho hiệu ứng nhấn
+import androidx.compose.animation.core.Animatable// Thêm các import cần thiết cho hiệu ứng nhấn
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -24,7 +23,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight // <-- THÊM IMPORT
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,7 +40,7 @@ fun WelcomeScreen(
     viewModel: WelcomeViewModel,
     onNavigateToLogin: () -> Unit
 ) {
-    // ... (Phần lắng nghe ViewModel và animation giữ nguyên)
+    // ... (Phần lắng nghe ViewModel giữ nguyên)
     LaunchedEffect(key1 = Unit) {
         viewModel.effect.collect { effect ->
             when (effect) {
@@ -51,6 +50,8 @@ fun WelcomeScreen(
             }
         }
     }
+
+    // ---- PHẦN ANIMATION ----
     val welcomeTextAlpha = remember { Animatable(0f) }
     val welcomeTextOffsetY = remember { Animatable(-100f) }
     val vitazenScale = remember { Animatable(0.5f) }
@@ -58,7 +59,13 @@ fun WelcomeScreen(
     val sloganAlpha = remember { Animatable(0f) }
     val sloganOffsetY = remember { Animatable(100f) }
     val buttonAlpha = remember { Animatable(0f) }
+
     LaunchedEffect(key1 = true) {
+        // --- THAY ĐỔI QUAN TRỌNG Ở ĐÂY ---
+        // Thêm một khoảng trễ 500ms (nửa giây) trước khi bắt đầu bất kỳ animation nào.
+        delay(500L)
+
+        // Các animation sau đó sẽ chạy như bình thường
         launch {
             launch {
                 welcomeTextAlpha.animateTo(1f, tween(800))
@@ -78,6 +85,8 @@ fun WelcomeScreen(
         delay(400)
         buttonAlpha.animateTo(1f, tween(durationMillis = 500))
     }
+
+    // ... (Phần còn lại của giao diện giữ nguyên)
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val buttonScale by animateFloatAsState(targetValue = if (isPressed) 0.95f else 1f, label = "buttonScale")
@@ -105,7 +114,6 @@ fun WelcomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // "Chào mừng đến với" - Giữ nguyên, không cần quá nổi bật
                 Text(
                     modifier = Modifier
                         .offset(y = welcomeTextOffsetY.value.dp)
@@ -114,10 +122,8 @@ fun WelcomeScreen(
                     text = "Chào mừng đến với",
                     color = Color.White.copy(alpha = 0.9f),
                     fontSize = 28.sp,
-                    fontWeight = FontWeight.Normal // <-- Độ đậm bình thường
+                    fontWeight = FontWeight.Normal
                 )
-
-                // "VitaZen" - Tên thương hiệu, CẦN NỔI BẬT NHẤT
                 Text(
                     modifier = Modifier
                         .scale(vitazenScale.value)
@@ -125,39 +131,31 @@ fun WelcomeScreen(
                     text = "VitaZen",
                     color = VitaZenYellow,
                     fontSize = 64.sp,
-                    fontWeight = FontWeight.ExtraBold, // <-- SỬA: Tăng độ đậm lên tối đa
+                    fontWeight = FontWeight.ExtraBold,
                     lineHeight = 60.sp
                 )
-
                 Spacer(modifier = Modifier.height(32.dp))
-
                 Column(
                     modifier = Modifier
                         .offset(y = sloganOffsetY.value.dp)
                         .alpha(sloganAlpha.value),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Slogan - Cần rõ ràng, dễ đọc
                     Text(
                         text = "Sống Khỏe, Sống Cân Bằng.",
                         fontSize = 20.sp,
-                        fontWeight = FontWeight.Medium, // <-- SỬA: Tăng nhẹ độ đậm
+                        fontWeight = FontWeight.Medium,
                         color = Color.White
                     )
-
                     Spacer(modifier = Modifier.height(12.dp))
-
-                    // Câu mô tả - Làm nền, không cần quá đậm
                     Text(
                         text = "Hành trình sức khỏe của bạn bắt đầu từ đây.",
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Light, // <-- SỬA: Giảm độ đậm để tạo sự tương phản
+                        fontWeight = FontWeight.Light,
                         color = Color.White.copy(alpha = 0.8f)
                     )
                 }
             }
-
-            // Nút kêu gọi hành động - Cần rõ ràng, thu hút
             Button(
                 onClick = { viewModel.handleEvent(WelcomeEvent.StartButtonClicked) },
                 modifier = Modifier
@@ -174,8 +172,8 @@ fun WelcomeScreen(
             ) {
                 Text(
                     "Bắt đầu ngay",
-                    fontWeight = FontWeight.Bold, // <-- SỬA: Tăng độ đậm
-                    fontSize = 18.sp // <-- Giữ nguyên hoặc có thể tăng lên 20.sp nếu muốn
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
                 )
             }
         }
