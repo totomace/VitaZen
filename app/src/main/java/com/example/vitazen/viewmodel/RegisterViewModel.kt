@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vitazen.model.data.User
 import com.example.vitazen.model.repository.UserRepository
+import com.example.vitazen.util.EmailValidationResult
+import com.example.vitazen.util.EmailValidator
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
@@ -15,6 +17,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+
+/**
+ * State cho email verification
+ */
+enum class EmailVerificationState {
+    IDLE,       // Chưa kiểm tra
+    VERIFYING,  // Đang kiểm tra
+    VALID,      // Email hợp lệ và real
+    INVALID     // Email không hợp lệ
+}
 
 /**
  * State cho RegisterScreen
@@ -25,7 +39,9 @@ data class RegisterState(
     val password: String = "",
     val confirmPassword: String = "",
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val emailVerificationState: EmailVerificationState = EmailVerificationState.IDLE,
+    val emailValidationResult: EmailValidationResult? = null
 )
 
 /**
@@ -59,6 +75,9 @@ class RegisterViewModel(
 
     private val _effect = MutableSharedFlow<RegisterEffect>()
     val effect = _effect.asSharedFlow()
+    
+    // Job để debounce email verification
+    private var emailVerificationJob: Job? = null
 
     fun handleEvent(event: RegisterEvent) {
         when (event) {
@@ -66,7 +85,17 @@ class RegisterViewModel(
                 _state.update { it.copy(username = event.username, errorMessage = null) }
             }
             is RegisterEvent.EmailChanged -> {
-                _state.update { it.copy(email = event.email, errorMessage = null) }
+                _state.update { it.copy(
+                    email = event.email, 
+                    errorMessage = null,
+                    emailVerificationState = EmailVerificationState.IDLE
+                ) }
+                // Debounce validation: chờ 500ms sau khi user dừng typing
+                emailVerificationJob?.cancel()
+                emailVerificationJob = viewModelScope.launch {
+                    delay(500)
+                    verifyEmail(event.email)
+                }
             }
             is RegisterEvent.PasswordChanged -> {
                 _state.update { it.copy(password = event.password, errorMessage = null) }
@@ -77,6 +106,32 @@ class RegisterViewModel(
             is RegisterEvent.RegisterButtonClicked -> register()
         }
     }
+    
+    /**
+     * Verify email sử dụng EmailValidator
+     */
+    private fun verifyEmail(email: String) {
+        val trimmedEmail = email.trim()
+        
+        if (trimmedEmail.isEmpty()) {
+            _state.update { it.copy(
+                emailVerificationState = EmailVerificationState.IDLE,
+                emailValidationResult = null
+            ) }
+            return
+        }
+        
+        // Bắt đầu verify
+        _state.update { it.copy(emailVerificationState = EmailVerificationState.VERIFYING) }
+        
+        // Thực hiện validation
+        val result = EmailValidator.validate(trimmedEmail)
+        
+        _state.update { it.copy(
+            emailVerificationState = if (result.isValid) EmailVerificationState.VALID else EmailVerificationState.INVALID,
+            emailValidationResult = result
+        ) }
+    }
 
     private fun register() {
         // Tránh double-submit
@@ -86,6 +141,7 @@ class RegisterViewModel(
         val email = _state.value.email.trim()
         val password = _state.value.password
         val confirmPassword = _state.value.confirmPassword
+        val emailValidationResult = _state.value.emailValidationResult
 
         // Validation
         when {
@@ -101,12 +157,8 @@ class RegisterViewModel(
                 _state.update { it.copy(errorMessage = "Vui lòng nhập email.") }
                 return
             }
-            !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
-                _state.update { it.copy(errorMessage = "Định dạng email không hợp lệ.") }
-                return
-            }
-            !isValidEmailDomain(email) -> {
-                _state.update { it.copy(errorMessage = "Email phải có tên miền hợp lệ (ví dụ: @gmail.com, @outlook.com).") }
+            emailValidationResult == null || !emailValidationResult.isValid -> {
+                _state.update { it.copy(errorMessage = emailValidationResult?.errorMessage ?: "Email không hợp lệ.") }
                 return
             }
             password.isBlank() -> {
@@ -161,23 +213,6 @@ class RegisterViewModel(
             } finally {
                 _state.update { it.copy(isLoading = false) }
             }
-        }
-    }
-    
-    /**
-     * Kiểm tra email có domain hợp lệ không
-     */
-    private fun isValidEmailDomain(email: String): Boolean {
-        val domain = email.substringAfterLast("@", "")
-        if (domain.isEmpty()) return false
-        
-        // Kiểm tra domain có ít nhất 1 dấu chấm và phần sau dấu chấm không rỗng
-        val parts = domain.split(".")
-        if (parts.size < 2) return false
-        
-        // Kiểm tra mỗi phần không rỗng và chỉ chứa ký tự hợp lệ
-        return parts.all { part ->
-            part.isNotEmpty() && part.all { it.isLetterOrDigit() || it == '-' }
         }
     }
 }

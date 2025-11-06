@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.vitazen.ui.login.AuthBackground
 import com.example.vitazen.ui.login.authTextFieldColors
 import com.example.vitazen.ui.theme.VitaZenYellow
+import com.example.vitazen.viewmodel.EmailVerificationState
 import com.example.vitazen.viewmodel.RegisterEffect
 import com.example.vitazen.viewmodel.RegisterEvent
 import com.example.vitazen.viewmodel.RegisterState
@@ -116,7 +117,6 @@ private fun RegisterForm(state: RegisterState, onEvent: (RegisterEvent) -> Unit)
         Spacer(modifier = Modifier.height(16.dp))
 
         // Email
-        val isEmailValid = state.email.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(state.email).matches()
         OutlinedTextField(
             value = state.email,
             onValueChange = { onEvent(RegisterEvent.EmailChanged(it)) },
@@ -125,14 +125,42 @@ private fun RegisterForm(state: RegisterState, onEvent: (RegisterEvent) -> Unit)
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             colors = authTextFieldColors(),
-            isError = state.errorMessage != null,
+            isError = state.emailVerificationState == EmailVerificationState.INVALID,
             trailingIcon = {
-                if (isEmailValid && state.errorMessage == null) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Email hợp lệ",
-                        tint = Color.Green
-                    )
+                when (state.emailVerificationState) {
+                    EmailVerificationState.VERIFYING -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                    EmailVerificationState.VALID -> {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Email hợp lệ",
+                            tint = Color.Green
+                        )
+                    }
+                    else -> { /* IDLE hoặc INVALID không hiện gì */ }
+                }
+            },
+            supportingText = {
+                state.emailValidationResult?.let { result ->
+                    when {
+                        result.errorMessage != null -> {
+                            Text(
+                                text = result.errorMessage,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        result.warningMessage != null -> {
+                            Text(
+                                text = result.warningMessage,
+                                color = Color.Yellow.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
                 }
             }
         )
