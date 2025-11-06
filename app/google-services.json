@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "905197380089",
+    "project_id": "vitazen-cd9f3",
+    "storage_bucket": "vitazen-cd9f3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:905197380089:android:ec7f2d246927d2f32d9d28",
+        "android_client_info": {
+          "package_name": "com.example.vitazen"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "905197380089-9mv8pdrulrtl00p7ljkrofd9pclo7upe.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.vitazen",
+            "certificate_hash": "296c371f92ae58ee66b93afb4184221b319ff97d"
+          }
+        },
+        {
+          "client_id": "905197380089-1pslk7see0ip76d93rd6cal59kn9ig5e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAW4gsCw0cLXji9kpbyypDAxVzAqgZn8K8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "905197380089-1pslk7see0ip76d93rd6cal59kn9ig5e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
