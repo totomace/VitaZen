@@ -14,6 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -115,6 +118,9 @@ private fun LoginForm(
     onNavigateToRegister: () -> Unit,
     onGoogleSignInClicked: () -> Unit
 ) {
+    // State để hiển thị dialog quên mật khẩu
+    var showForgotPasswordDialog by remember { mutableStateOf(false) }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -133,12 +139,25 @@ private fun LoginForm(
         Spacer(modifier = Modifier.height(16.dp))
         PasswordTextField(value = state.password, onValueChange = { onEvent(LoginEvent.PasswordChanged(it)) }, isError = state.errorMessage != null)
 
-        // Hiển thị lỗi
+        // Nút quên mật khẩu
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = { showForgotPasswordDialog = true }) {
+                Text("Quên mật khẩu?", color = VitaZenYellow, fontSize = 14.sp)
+            }
+        }
+
+        // Hiển thị lỗi hoặc thành công
         if (state.errorMessage != null) {
             Text(text = state.errorMessage, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp).fillMaxWidth(), textAlign = TextAlign.Center)
         }
+        if (state.successMessage != null) {
+            Text(text = state.successMessage, color = Color.Green, modifier = Modifier.padding(top = 8.dp).fillMaxWidth(), textAlign = TextAlign.Center)
+        }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Nút đăng nhập bằng Email/Password
         Button(
@@ -162,6 +181,18 @@ private fun LoginForm(
         TextButton(onClick = onNavigateToRegister) {
             Text("Chưa có tài khoản? Đăng ký ngay", color = VitaZenYellow)
         }
+    }
+    
+    // Dialog quên mật khẩu
+    if (showForgotPasswordDialog) {
+        ForgotPasswordDialog(
+            currentEmail = state.email,
+            onDismiss = { showForgotPasswordDialog = false },
+            onSendResetEmail = { email ->
+                onEvent(LoginEvent.ForgotPasswordClicked(email))
+                showForgotPasswordDialog = false
+            }
+        )
     }
 }
 
@@ -226,3 +257,46 @@ fun authTextFieldColors() = OutlinedTextFieldDefaults.colors(
     errorBorderColor = MaterialTheme.colorScheme.error,
     errorLabelColor = MaterialTheme.colorScheme.error
 )
+
+@Composable
+private fun ForgotPasswordDialog(
+    currentEmail: String,
+    onDismiss: () -> Unit,
+    onSendResetEmail: (String) -> Unit
+) {
+    var email by remember { mutableStateOf(currentEmail) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Quên mật khẩu", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column {
+                Text("Nhập email của bạn để nhận link khôi phục mật khẩu:")
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSendResetEmail(email) },
+                colors = ButtonDefaults.buttonColors(containerColor = VitaZenYellow, contentColor = Color.Black)
+            ) {
+                Text("Gửi")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Hủy")
+            }
+        }
+    )
+}

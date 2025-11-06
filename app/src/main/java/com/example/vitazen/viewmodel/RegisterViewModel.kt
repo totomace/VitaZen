@@ -102,7 +102,11 @@ class RegisterViewModel(
                 return
             }
             !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
-                _state.update { it.copy(errorMessage = "Email không hợp lệ.") }
+                _state.update { it.copy(errorMessage = "Định dạng email không hợp lệ.") }
+                return
+            }
+            !isValidEmailDomain(email) -> {
+                _state.update { it.copy(errorMessage = "Email phải có tên miền hợp lệ (ví dụ: @gmail.com, @outlook.com).") }
                 return
             }
             password.isBlank() -> {
@@ -157,6 +161,23 @@ class RegisterViewModel(
             } finally {
                 _state.update { it.copy(isLoading = false) }
             }
+        }
+    }
+    
+    /**
+     * Kiểm tra email có domain hợp lệ không
+     */
+    private fun isValidEmailDomain(email: String): Boolean {
+        val domain = email.substringAfterLast("@", "")
+        if (domain.isEmpty()) return false
+        
+        // Kiểm tra domain có ít nhất 1 dấu chấm và phần sau dấu chấm không rỗng
+        val parts = domain.split(".")
+        if (parts.size < 2) return false
+        
+        // Kiểm tra mỗi phần không rỗng và chỉ chứa ký tự hợp lệ
+        return parts.all { part ->
+            part.isNotEmpty() && part.all { it.isLetterOrDigit() || it == '-' }
         }
     }
 }

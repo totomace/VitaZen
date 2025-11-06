@@ -24,7 +24,8 @@ data class LoginState(
     val email: String = "",
     val password: String = "",
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val successMessage: String? = null
 )
 
 /**
@@ -35,6 +36,7 @@ sealed class LoginEvent {
     data class PasswordChanged(val value: String) : LoginEvent()
     object LoginButtonClicked : LoginEvent()
     data class GoogleIdTokenReceived(val idToken: String) : LoginEvent()
+    data class ForgotPasswordClicked(val email: String) : LoginEvent()
 }
 
 /**
@@ -66,13 +68,14 @@ class LoginViewModel(
     fun handleEvent(event: LoginEvent) {
         when (event) {
             is LoginEvent.EmailChanged -> {
-                _state.update { it.copy(email = event.value, errorMessage = null) }
+                _state.update { it.copy(email = event.value, errorMessage = null, successMessage = null) }
             }
             is LoginEvent.PasswordChanged -> {
-                _state.update { it.copy(password = event.value, errorMessage = null) }
+                _state.update { it.copy(password = event.value, errorMessage = null, successMessage = null) }
             }
             is LoginEvent.LoginButtonClicked -> loginWithEmailPassword()
             is LoginEvent.GoogleIdTokenReceived -> signInWithGoogle(event.idToken)
+            is LoginEvent.ForgotPasswordClicked -> sendPasswordResetEmail(event.email)
         }
     }
 
@@ -172,6 +175,46 @@ class LoginViewModel(
                     else -> "Email hoặc mật khẩu không đúng."
                 }
                 _state.update { it.copy(errorMessage = errorMessage) }
+            } finally {
+                _state.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+    
+    /**
+     * Gửi email reset mật khẩu
+     */
+    private fun sendPasswordResetEmail(email: String) {
+        val trimmedEmail = email.trim()
+        
+        // Validation
+        when {
+            trimmedEmail.isBlank() -> {
+                _state.update { it.copy(errorMessage = "Vui lòng nhập email.") }
+                return
+            }
+            !Patterns.EMAIL_ADDRESS.matcher(trimmedEmail).matches() -> {
+                _state.update { it.copy(errorMessage = "Email không hợp lệ.") }
+                return
+            }
+        }
+        
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
+            try {
+                auth.sendPasswordResetEmail(trimmedEmail).await()
+                _state.update { 
+                    it.copy(
+                        successMessage = "Email khôi phục mật khẩu đã được gửi đến $trimmedEmail. Vui lòng kiểm tra hộp thư.",
+                        errorMessage = null
+                    ) 
+                }
+            } catch (e: Exception) {
+                val errorMessage = when (e) {
+                    is FirebaseAuthInvalidUserException -> "Email này chưa được đăng ký."
+                    else -> "Không thể gửi email. Vui lòng thử lại sau."
+                }
+                _state.update { it.copy(errorMessage = errorMessage, successMessage = null) }
             } finally {
                 _state.update { it.copy(isLoading = false) }
             }
