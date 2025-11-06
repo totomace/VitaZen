@@ -1,6 +1,5 @@
 package com.example.vitazen.ui.register
 
-import androidx.compose.animation.core.copy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,8 +18,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.vitazen.ui.login.AuthBackground // Tái sử dụng AuthBackground từ LoginScreen
-import com.example.vitazen.ui.login.authTextFieldColors // Tái sử dụng authTextFieldColors
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.vitazen.ui.login.AuthBackground
+import com.example.vitazen.ui.login.authTextFieldColors
 import com.example.vitazen.ui.theme.VitaZenYellow
 import com.example.vitazen.viewmodel.RegisterEffect
 import com.example.vitazen.viewmodel.RegisterEvent
@@ -30,9 +31,9 @@ import com.example.vitazen.viewmodel.RegisterViewModel
 fun RegisterScreen(
     viewModel: RegisterViewModel,
     onNavigateToHome: () -> Unit,
-    onNavigateBack: () -> Unit // Thêm hành động để quay lại
+    onNavigateBack: () -> Unit
 ) {
-    val state = viewModel.state
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(key1 = Unit) {
         viewModel.effect.collect { effect ->

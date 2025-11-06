@@ -1,5 +1,6 @@
 package com.example.vitazen.viewmodel
 
+import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -14,10 +15,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-// XÓA DÒNG "private val ktx: Any"
-
 /**
- * Lớp trạng thái (State) chứa toàn bộ dữ liệu cần thiết để vẽ giao diện LoginScreen.
+ * State cho LoginScreen
  */
 data class LoginState(
     val email: String = "",
@@ -27,25 +26,28 @@ data class LoginState(
 )
 
 /**
- * Các sự kiện (Event) mà người dùng có thể thực hiện trên LoginScreen.
+ * Events từ UI
  */
 sealed class LoginEvent {
     data class EmailChanged(val value: String) : LoginEvent()
     data class PasswordChanged(val value: String) : LoginEvent()
     object LoginButtonClicked : LoginEvent()
-    // Sự kiện mới: Nhận idToken từ UI sau khi đăng nhập Google thành công
     data class GoogleIdTokenReceived(val idToken: String) : LoginEvent()
 }
 
 /**
- * Các hiệu ứng một lần (Side Effect) mà ViewModel muốn View thực hiện.
+ * Side effects một lần
  */
 sealed class LoginEffect {
     object NavigateToHome : LoginEffect()
 }
 
-
-class LoginViewModel : ViewModel() {
+/**
+ * ViewModel tối ưu với dependency injection và validation
+ */
+class LoginViewModel(
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+) : ViewModel() {
 
     // Quản lý trạng thái của giao diện bằng StateFlow
     private val _state = MutableStateFlow(LoginState())
@@ -55,37 +57,39 @@ class LoginViewModel : ViewModel() {
     private val _effect = MutableSharedFlow<LoginEffect>()
     val effect = _effect.asSharedFlow()
 
-    // Khởi tạo Firebase Auth
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-
     /**
-     * Xử lý các sự kiện từ View.
+     * Xử lý events từ UI
      */
     fun handleEvent(event: LoginEvent) {
         when (event) {
-            is LoginEvent.EmailChanged -> _state.update { it.copy(email = event.value) }
-            is LoginEvent.PasswordChanged -> _state.update { it.copy(password = event.value) }
+            is LoginEvent.EmailChanged -> {
+                _state.update { it.copy(email = event.value, errorMessage = null) }
+            }
+            is LoginEvent.PasswordChanged -> {
+                _state.update { it.copy(password = event.value, errorMessage = null) }
+            }
             is LoginEvent.LoginButtonClicked -> loginWithEmailPassword()
-            // Khi nhận được idToken, gọi hàm đăng nhập bằng Google
             is LoginEvent.GoogleIdTokenReceived -> signInWithGoogle(event.idToken)
         }
     }
 
     /**
-     * Hàm mới để xác thực idToken của Google với Firebase.
+     * Đăng nhập với Google - tối ưu với validation
      */
     private fun signInWithGoogle(idToken: String) {
+        // Tránh gọi nhiều lần khi đang loading
+        if (_state.value.isLoading) return
+
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // Tạo credential từ idToken
                 val credential = GoogleAuthProvider.getCredential(idToken, null)
-                // Dùng credential để đăng nhập vào Firebase
                 auth.signInWithCredential(credential).await()
-                // Gửi hiệu ứng điều hướng khi thành công
                 _effect.emit(LoginEffect.NavigateToHome)
             } catch (e: Exception) {
-                _state.update { it.copy(errorMessage = e.message ?: "Lỗi đăng nhập Google không xác định.") }
+                _state.update { 
+                    it.copy(errorMessage = e.message ?: "Lỗi đăng nhập Google không xác định.") 
+                }
             } finally {
                 _state.update { it.copy(isLoading = false) }
             }
@@ -93,18 +97,39 @@ class LoginViewModel : ViewModel() {
     }
 
     /**
-     * Hàm đăng nhập bằng Email/Password (đã cập nhật để dùng Firebase).
+     * Đăng nhập Email/Password - có validation
      */
     private fun loginWithEmailPassword() {
-        if (state.value.email.isBlank() || state.value.password.isBlank()) {
-            _state.update { it.copy(errorMessage = "Vui lòng nhập email và mật khẩu.") }
-            return
+        // Tránh gọi nhiều lần khi đang loading
+        if (_state.value.isLoading) return
+
+        val email = _state.value.email.trim()
+        val password = _state.value.password
+
+        // Validation
+        when {
+            email.isBlank() -> {
+                _state.update { it.copy(errorMessage = "Vui lòng nhập email.") }
+                return
+            }
+            !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
+                _state.update { it.copy(errorMessage = "Email không hợp lệ.") }
+                return
+            }
+            password.isBlank() -> {
+                _state.update { it.copy(errorMessage = "Vui lòng nhập mật khẩu.") }
+                return
+            }
+            password.length < 6 -> {
+                _state.update { it.copy(errorMessage = "Mật khẩu phải có ít nhất 6 ký tự.") }
+                return
+            }
         }
 
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                auth.signInWithEmailAndPassword(state.value.email, state.value.password).await()
+                auth.signInWithEmailAndPassword(email, password).await()
                 _effect.emit(LoginEffect.NavigateToHome)
             } catch (e: Exception) {
                 val errorMessage = when (e) {
@@ -118,6 +143,4 @@ class LoginViewModel : ViewModel() {
             }
         }
     }
-
-    // XÓA HÀM private fun FirebaseAuth.signInWithEmailAndPassword... Ở ĐÂY
 }

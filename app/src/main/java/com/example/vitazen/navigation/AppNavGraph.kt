@@ -1,11 +1,11 @@
 package com.example.vitazen.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
-// THAY ĐỔI IMPORT: Sử dụng thư viện chính thức của AndroidX
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -17,22 +17,27 @@ import com.example.vitazen.viewmodel.LoginViewModel
 import com.example.vitazen.viewmodel.RegisterViewModel
 import com.example.vitazen.viewmodel.WelcomeViewModel
 
-// BỎ ANNOTATION @OptIn(ExperimentalAnimationApi::class) vì không cần nữa
+/**
+ * Hằng số cho animation duration để tái sử dụng
+ */
+private const val ANIMATION_DURATION = 400
 @Composable
 fun AppNavGraph() {
-    // SỬ DỤNG LẠI rememberNavController thông thường
     val navController = rememberNavController()
 
-    // SỬ DỤNG LẠI NavHost thông thường, hiệu ứng được định nghĩa trong composable
     NavHost(
         navController = navController,
         startDestination = Routes.WELCOME
     ) {
-        // Màn hình Chào mừng (Welcome)
+        // Màn hình Welcome - Slide right to left khi thoát
         composable(
             route = Routes.WELCOME,
-            // Hiệu ứng được định nghĩa trực tiếp ở đây
-            exitTransition = { fadeOut(animationSpec = tween(500)) }
+            exitTransition = {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(ANIMATION_DURATION)
+                ) + fadeOut(animationSpec = tween(ANIMATION_DURATION))
+            }
         ) {
             val welcomeViewModel: WelcomeViewModel = viewModel()
             WelcomeScreen(
@@ -45,17 +50,38 @@ fun AppNavGraph() {
             )
         }
 
-        // Màn hình Đăng nhập (Login)
+        // Màn hình Login - Slide in from right
         composable(
             route = Routes.LOGIN,
-            enterTransition = { fadeIn(animationSpec = tween(500)) },
-            exitTransition = { fadeOut(animationSpec = tween(500)) }
+            enterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(ANIMATION_DURATION)
+                ) + fadeIn(animationSpec = tween(ANIMATION_DURATION))
+            },
+            exitTransition = {
+                when (targetState.destination.route) {
+                    Routes.REGISTER -> slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                        animationSpec = tween(ANIMATION_DURATION)
+                    )
+                    else -> fadeOut(animationSpec = tween(ANIMATION_DURATION))
+                }
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(ANIMATION_DURATION)
+                ) + fadeIn(animationSpec = tween(ANIMATION_DURATION))
+            }
         ) {
             val loginViewModel: LoginViewModel = viewModel()
             LoginScreen(
                 viewModel = loginViewModel,
                 onNavigateToHome = {
-                    navController.navigate(Routes.HOME) { popUpTo(0) }
+                    navController.navigate(Routes.HOME) { 
+                        popUpTo(0) { inclusive = true }
+                    }
                 },
                 onNavigateToRegister = {
                     navController.navigate(Routes.REGISTER)
@@ -63,17 +89,32 @@ fun AppNavGraph() {
             )
         }
 
-        // MÀN HÌNH ĐĂNG KÝ (MỚI)
+        // Màn hình Register - Slide in from right, slide out to right khi back
         composable(
             route = Routes.REGISTER,
-            enterTransition = { fadeIn(animationSpec = tween(500)) },
-            exitTransition = { fadeOut(animationSpec = tween(500)) }
+            enterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(ANIMATION_DURATION)
+                ) + fadeIn(animationSpec = tween(ANIMATION_DURATION))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(ANIMATION_DURATION))
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(ANIMATION_DURATION)
+                ) + fadeOut(animationSpec = tween(ANIMATION_DURATION))
+            }
         ) {
             val registerViewModel: RegisterViewModel = viewModel()
             RegisterScreen(
                 viewModel = registerViewModel,
                 onNavigateToHome = {
-                    navController.navigate(Routes.HOME) { popUpTo(0) }
+                    navController.navigate(Routes.HOME) { 
+                        popUpTo(0) { inclusive = true }
+                    }
                 },
                 onNavigateBack = {
                     navController.popBackStack()
@@ -81,10 +122,12 @@ fun AppNavGraph() {
             )
         }
 
-        // Màn hình Chính (Home)
+        // Màn hình Home - Fade in mượt mà
         composable(
             route = Routes.HOME,
-            enterTransition = { fadeIn(animationSpec = tween(500)) }
+            enterTransition = {
+                fadeIn(animationSpec = tween(ANIMATION_DURATION))
+            }
         ) {
             HomeScreen()
         }
