@@ -1,20 +1,29 @@
 package com.example.vitazen.ui.register
 
+import android.util.Patterns
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -107,6 +116,7 @@ private fun RegisterForm(state: RegisterState, onEvent: (RegisterEvent) -> Unit)
         Spacer(modifier = Modifier.height(16.dp))
 
         // Email
+        val isEmailValid = state.email.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(state.email).matches()
         OutlinedTextField(
             value = state.email,
             onValueChange = { onEvent(RegisterEvent.EmailChanged(it)) },
@@ -115,33 +125,88 @@ private fun RegisterForm(state: RegisterState, onEvent: (RegisterEvent) -> Unit)
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             colors = authTextFieldColors(),
-            isError = state.errorMessage != null
+            isError = state.errorMessage != null,
+            trailingIcon = {
+                if (isEmailValid && state.errorMessage == null) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Email hợp lệ",
+                        tint = Color.Green
+                    )
+                }
+            }
         )
         Spacer(modifier = Modifier.height(16.dp))
 
         // Password
+        var passwordVisible by remember { mutableStateOf(false) }
+        val isPasswordValid = state.password.length >= 6
         OutlinedTextField(
             value = state.password,
             onValueChange = { onEvent(RegisterEvent.PasswordChanged(it)) },
             label = { Text("Mật khẩu") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             colors = authTextFieldColors(),
-            isError = state.errorMessage != null
+            isError = state.errorMessage != null,
+            trailingIcon = {
+                Row {
+                    // Dấu tích xanh
+                    if (isPasswordValid && state.errorMessage == null && state.password.isNotBlank()) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Mật khẩu hợp lệ",
+                            tint = Color.Green,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                    // Icon con mắt
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                            contentDescription = if (passwordVisible) "Ẩn mật khẩu" else "Hiện mật khẩu",
+                            tint = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
         )
         Spacer(modifier = Modifier.height(16.dp))
 
         // Confirm Password
+        var confirmPasswordVisible by remember { mutableStateOf(false) }
+        val isConfirmPasswordValid = state.confirmPassword.isNotBlank() && state.password == state.confirmPassword
         OutlinedTextField(
             value = state.confirmPassword,
             onValueChange = { onEvent(RegisterEvent.ConfirmPasswordChanged(it)) },
             label = { Text("Xác nhận mật khẩu") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
+            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             colors = authTextFieldColors(),
-            isError = state.errorMessage?.contains("khớp") == true // Chỉ báo lỗi khi lỗi liên quan đến mật khẩu
+            isError = state.errorMessage?.contains("khớp") == true,
+            trailingIcon = {
+                Row {
+                    // Dấu tích xanh
+                    if (isConfirmPasswordValid && state.errorMessage?.contains("khớp") != true) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Mật khẩu khớp",
+                            tint = Color.Green,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                    // Icon con mắt
+                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                        Icon(
+                            imageVector = if (confirmPasswordVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                            contentDescription = if (confirmPasswordVisible) "Ẩn mật khẩu" else "Hiện mật khẩu",
+                            tint = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
         )
 
         if (state.errorMessage != null) {

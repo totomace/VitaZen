@@ -49,6 +49,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material:material-icons-extended:1.7.5")
 
     // Dọn dẹp các khai báo trùng lặp
     implementation("androidx.navigation:navigation-compose:2.8.0-beta05")

@@ -1,6 +1,7 @@
 package com.example.vitazen.ui.login
 
 import android.app.Activity
+import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -10,6 +11,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,6 +31,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -214,20 +220,65 @@ fun AuthBackground() {
 
 @Composable
 private fun EmailTextField(value: String, onValueChange: (String) -> Unit, isError: Boolean) {
+    val isValid = value.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(value).matches()
+    
     OutlinedTextField(
-        value = value, onValueChange = onValueChange, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(),
-        singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-        isError = isError, colors = authTextFieldColors()
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text("Email") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+        isError = isError,
+        colors = authTextFieldColors(),
+        trailingIcon = {
+            if (isValid && !isError) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Email hợp lệ",
+                    tint = Color.Green
+                )
+            }
+        }
     )
 }
 
 @Composable
 private fun PasswordTextField(value: String, onValueChange: (String) -> Unit, isError: Boolean) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    val isValid = value.length >= 6
+    
     OutlinedTextField(
-        value = value, onValueChange = onValueChange, label = { Text("Mật khẩu") }, modifier = Modifier.fillMaxWidth(),
-        singleLine = true, visualTransformation = PasswordVisualTransformation(),
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text("Mật khẩu") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        isError = isError, colors = authTextFieldColors()
+        isError = isError,
+        colors = authTextFieldColors(),
+        trailingIcon = {
+            Row {
+                // Dấu tích xanh khi password hợp lệ
+                if (isValid && !isError && value.isNotBlank()) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Mật khẩu hợp lệ",
+                        tint = Color.Green,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
+                // Icon con mắt ẩn/hiện
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Ẩn mật khẩu" else "Hiện mật khẩu",
+                        tint = Color.White.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
     )
 }
 
