@@ -3,6 +3,8 @@ package com.example.vitazen.viewmodel
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.vitazen.model.data.User
+import com.example.vitazen.model.repository.UserRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
@@ -45,10 +47,11 @@ sealed class RegisterEffect {
 }
 
 /**
- * ViewModel tối ưu với Firebase Authentication
+ * ViewModel tối ưu với Firebase Authentication + Room Database
  */
 class RegisterViewModel(
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val userRepository: UserRepository? = null // Sẽ inject từ MainActivity
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(RegisterState())
@@ -119,15 +122,29 @@ class RegisterViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // Đăng ký với Firebase
-                auth.createUserWithEmailAndPassword(email, password).await()
+                // 1. Đăng ký với Firebase
+                val authResult = auth.createUserWithEmailAndPassword(email, password).await()
                 
-                // Cập nhật display name (username)
+                // 2. Cập nhật display name (username)
                 auth.currentUser?.updateProfile(
                     com.google.firebase.auth.UserProfileChangeRequest.Builder()
                         .setDisplayName(username)
                         .build()
                 )?.await()
+                
+                // 3. Lưu user vào Room Database để dùng offline
+                val firebaseUser = authResult.user
+                if (firebaseUser != null && userRepository != null) {
+                    val user = User(
+                        uid = firebaseUser.uid,
+                        email = email,
+                        username = username,
+                        profilePictureUrl = firebaseUser.photoUrl?.toString(),
+                        createdAt = System.currentTimeMillis(),
+                        lastLoginAt = System.currentTimeMillis()
+                    )
+                    userRepository.insertOrUpdateUser(user)
+                }
                 
                 _effect.emit(RegisterEffect.NavigateToHome)
             } catch (e: Exception) {

@@ -3,6 +3,8 @@ package com.example.vitazen.viewmodel
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.vitazen.model.data.User
+import com.example.vitazen.model.repository.UserRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -43,10 +45,11 @@ sealed class LoginEffect {
 }
 
 /**
- * ViewModel tối ưu với dependency injection và validation
+ * ViewModel tối ưu với dependency injection, validation, và Room Database
  */
 class LoginViewModel(
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val userRepository: UserRepository? = null // Sẽ inject từ MainActivity
 ) : ViewModel() {
 
     // Quản lý trạng thái của giao diện bằng StateFlow
@@ -74,7 +77,7 @@ class LoginViewModel(
     }
 
     /**
-     * Đăng nhập với Google - tối ưu với validation
+     * Đăng nhập với Google - tối ưu với validation + Room Database
      */
     private fun signInWithGoogle(idToken: String) {
         // Tránh gọi nhiều lần khi đang loading
@@ -84,7 +87,31 @@ class LoginViewModel(
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val credential = GoogleAuthProvider.getCredential(idToken, null)
-                auth.signInWithCredential(credential).await()
+                val authResult = auth.signInWithCredential(credential).await()
+                
+                // Lưu/Update user vào Room Database
+                val firebaseUser = authResult.user
+                if (firebaseUser != null && userRepository != null) {
+                    // Kiểm tra xem user đã tồn tại chưa
+                    val existingUser = userRepository.getUserById(firebaseUser.uid)
+                    
+                    if (existingUser != null) {
+                        // User đã tồn tại -> update lastLoginAt
+                        userRepository.updateLastLogin(firebaseUser.uid)
+                    } else {
+                        // User mới -> insert vào database
+                        val user = User(
+                            uid = firebaseUser.uid,
+                            email = firebaseUser.email ?: "",
+                            username = firebaseUser.displayName ?: "User",
+                            profilePictureUrl = firebaseUser.photoUrl?.toString(),
+                            createdAt = System.currentTimeMillis(),
+                            lastLoginAt = System.currentTimeMillis()
+                        )
+                        userRepository.insertOrUpdateUser(user)
+                    }
+                }
+                
                 _effect.emit(LoginEffect.NavigateToHome)
             } catch (e: Exception) {
                 _state.update { 
@@ -97,7 +124,7 @@ class LoginViewModel(
     }
 
     /**
-     * Đăng nhập Email/Password - có validation
+     * Đăng nhập Email/Password - có validation + Room Database
      */
     private fun loginWithEmailPassword() {
         // Tránh gọi nhiều lần khi đang loading
@@ -129,7 +156,14 @@ class LoginViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                auth.signInWithEmailAndPassword(email, password).await()
+                val authResult = auth.signInWithEmailAndPassword(email, password).await()
+                
+                // Update lastLoginAt trong Room Database
+                val firebaseUser = authResult.user
+                if (firebaseUser != null && userRepository != null) {
+                    userRepository.updateLastLogin(firebaseUser.uid)
+                }
+                
                 _effect.emit(LoginEffect.NavigateToHome)
             } catch (e: Exception) {
                 val errorMessage = when (e) {

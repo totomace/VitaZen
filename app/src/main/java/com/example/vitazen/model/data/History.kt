@@ -6,11 +6,11 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Entity class cho Reminder table.
- * Lưu các nhắc nhở của user (ví dụ: uống nước, tập thể dục, v.v.)
+ * Entity class cho History table.
+ * Lưu lịch sử hoạt động của user (ví dụ: lịch sử ăn uống, tập luyện, v.v.)
  */
 @Entity(
-    tableName = "reminders",
+    tableName = "history",
     foreignKeys = [
         ForeignKey(
             entity = User::class,
@@ -21,13 +21,12 @@ import androidx.room.PrimaryKey
     ],
     indices = [Index(value = ["userId"])]
 )
-data class Reminder(
+data class History(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val userId: String,
     val title: String,
     val description: String,
-    val time: Long, // Timestamp khi reminder sẽ kích hoạt
-    val isActive: Boolean = true,
-    val createdAt: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val type: String // ví dụ: "meal", "exercise", "water", "sleep"
 )

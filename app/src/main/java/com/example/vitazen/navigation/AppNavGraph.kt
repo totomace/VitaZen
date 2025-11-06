@@ -5,10 +5,15 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.vitazen.model.database.VitaZenDatabase
+import com.example.vitazen.model.repository.UserRepository
 import com.example.vitazen.ui.home.HomeScreen
 import com.example.vitazen.ui.login.LoginScreen
 import com.example.vitazen.ui.register.RegisterScreen
@@ -16,14 +21,36 @@ import com.example.vitazen.ui.welcome.WelcomeScreen
 import com.example.vitazen.viewmodel.LoginViewModel
 import com.example.vitazen.viewmodel.RegisterViewModel
 import com.example.vitazen.viewmodel.WelcomeViewModel
+import com.google.firebase.auth.FirebaseAuth
 
 /**
  * Hằng số cho animation duration để tái sử dụng
  */
 private const val ANIMATION_DURATION = 400
+
 @Composable
 fun AppNavGraph() {
     val navController = rememberNavController()
+    
+    // Khởi tạo UserRepository từ database
+    val context = LocalContext.current
+    val database = VitaZenDatabase.getInstance(context)
+    val userRepository = UserRepository(database.userDao())
+    
+    // Factory để tạo ViewModels với dependencies
+    val loginViewModelFactory = object : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            return LoginViewModel(FirebaseAuth.getInstance(), userRepository) as T
+        }
+    }
+    
+    val registerViewModelFactory = object : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            return RegisterViewModel(FirebaseAuth.getInstance(), userRepository) as T
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -75,7 +102,7 @@ fun AppNavGraph() {
                 ) + fadeIn(animationSpec = tween(ANIMATION_DURATION))
             }
         ) {
-            val loginViewModel: LoginViewModel = viewModel()
+            val loginViewModel: LoginViewModel = viewModel(factory = loginViewModelFactory)
             LoginScreen(
                 viewModel = loginViewModel,
                 onNavigateToHome = {
@@ -108,7 +135,7 @@ fun AppNavGraph() {
                 ) + fadeOut(animationSpec = tween(ANIMATION_DURATION))
             }
         ) {
-            val registerViewModel: RegisterViewModel = viewModel()
+            val registerViewModel: RegisterViewModel = viewModel(factory = registerViewModelFactory)
             RegisterScreen(
                 viewModel = registerViewModel,
                 onNavigateToHome = {
