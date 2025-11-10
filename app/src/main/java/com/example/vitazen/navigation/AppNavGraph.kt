@@ -31,12 +31,12 @@ private const val ANIMATION_DURATION = 400
 @Composable
 fun AppNavGraph() {
     val navController = rememberNavController()
-    
+
     // Khởi tạo UserRepository từ database
     val context = LocalContext.current
     val database = VitaZenDatabase.getInstance(context)
     val userRepository = UserRepository(database.userDao())
-    
+
     // Factory để tạo ViewModels với dependencies
     val loginViewModelFactory = object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
@@ -44,7 +44,7 @@ fun AppNavGraph() {
             return LoginViewModel(FirebaseAuth.getInstance(), userRepository) as T
         }
     }
-    
+
     val registerViewModelFactory = object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -106,7 +106,7 @@ fun AppNavGraph() {
             LoginScreen(
                 viewModel = loginViewModel,
                 onNavigateToHome = {
-                    navController.navigate(Routes.HOME) { 
+                    navController.navigate(Routes.HOME) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
@@ -139,7 +139,7 @@ fun AppNavGraph() {
             RegisterScreen(
                 viewModel = registerViewModel,
                 onNavigateToHome = {
-                    navController.navigate(Routes.HOME) { 
+                    navController.navigate(Routes.HOME) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
