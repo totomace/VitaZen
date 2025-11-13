@@ -23,6 +23,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Home
+
 import androidx.compose.ui.tooling.preview.Preview
 
 
@@ -44,11 +52,19 @@ data class HealthActivity(
     val color: Color
 )
 
+
+
 @Composable
 fun HomeScreen(
     onAddDataClick: () -> Unit = {},
     onStatsClick: () -> Unit = {},
-    onHistoryClick: () -> Unit = {}
+    onHistoryClick: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToReminder: () -> Unit = {},
+    onNavigateToHistory: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
+    selectedTab: Int = 0,
+    onTabSelected: (Int) -> Unit = {}
 ) {
     val healthActivities = remember {
         listOf(
@@ -59,45 +75,80 @@ fun HomeScreen(
         )
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF8F9FA)),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(16.dp)
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(Color.White)
     ) {
-        // Header chào mừng
-        item {
-            WelcomeHeader()
-        }
-
-        // Tổng quan sức khỏe
-        item {
-            HealthOverviewCard()
-        }
-
-        // Quick Actions
-        item {
-            QuickActionsRow(
-                onAddDataClick = onAddDataClick,
-                onStatsClick = onStatsClick,
-                onHistoryClick = onHistoryClick
+        // Overlay vàng nhạt nhẹ cho cảm giác ấm áp, hài hòa với login
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(com.example.vitazen.ui.theme.VitaZenYellow.copy(alpha = 0.08f))
+        )
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Nội dung chính
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(16.dp)
+            ) {
+                // Header chào mừng
+                item { WelcomeHeader() }
+                // Tổng quan sức khỏe
+                item { HealthOverviewCard() }
+                // Quick Actions
+                item {
+                    QuickActionsRow(
+                        onAddDataClick = onAddDataClick,
+                        onStatsClick = onStatsClick,
+                        onHistoryClick = onHistoryClick
+                    )
+                }
+                // Biểu đồ theo dõi
+                item { ChartSection() }
+                // Hoạt động gần đây
+                item { RecentActivitiesHeader(onHistoryClick = onHistoryClick) }
+                items(healthActivities) { activity ->
+                    HealthActivityItem(activity = activity)
+                }
+            }
+            // Thanh điều hướng dưới
+            BottomNavigationBar(
+                selectedTab = selectedTab,
+                onTabSelected = onTabSelected
             )
         }
+    }
+}
 
-        // Biểu đồ theo dõi
-        item {
-            ChartSection()
-        }
-
-        // Hoạt động gần đây
-        item {
-            RecentActivitiesHeader(onHistoryClick = onHistoryClick)
-        }
-
-        items(healthActivities) { activity ->
-            HealthActivityItem(activity = activity)
-        }
+@Composable
+fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
+    NavigationBar {
+        NavigationBarItem(
+            selected = selectedTab == 0,
+            onClick = { onTabSelected(0) },
+            icon = { Icon(Icons.Default.Home, contentDescription = "Trang chủ") },
+            label = { Text("Trang chủ") }
+        )
+        NavigationBarItem(
+            selected = selectedTab == 1,
+            onClick = { onTabSelected(1) },
+            icon = { Icon(Icons.Default.Notifications, contentDescription = "Nhắc nhở") },
+            label = { Text("Nhắc nhở") }
+        )
+        NavigationBarItem(
+            selected = selectedTab == 2,
+            onClick = { onTabSelected(2) },
+            icon = { Icon(Icons.Default.History, contentDescription = "Lịch sử") },
+            label = { Text("Lịch sử") }
+        )
+        NavigationBarItem(
+            selected = selectedTab == 3,
+            onClick = { onTabSelected(3) },
+            icon = { Icon(Icons.Default.Settings, contentDescription = "Cài đặt") },
+            label = { Text("Cài đặt") }
+        )
     }
 }
 

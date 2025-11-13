@@ -23,6 +23,11 @@ import com.example.vitazen.viewmodel.RegisterViewModel
 import com.example.vitazen.viewmodel.WelcomeViewModel
 import com.google.firebase.auth.FirebaseAuth
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.LaunchedEffect
+
 /**
  * Hằng số cho animation duration để tái sử dụng
  */
@@ -106,12 +111,40 @@ fun AppNavGraph() {
             LoginScreen(
                 viewModel = loginViewModel,
                 onNavigateToHome = {
-                    navController.navigate(Routes.HOME) {
+                    navController.navigate(Routes.NAME_INPUT) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
                 onNavigateToRegister = {
                     navController.navigate(Routes.REGISTER)
+                }
+            )
+        }
+
+        // Màn hình nhập tên sau đăng nhập (đưa ra ngoài, cùng cấp các route khác)
+        composable(route = Routes.NAME_INPUT) {
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                // No-op, chỉ để Compose imports sẵn sàng
+            }
+            var pendingName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+            if (pendingName != null) {
+                androidx.compose.runtime.LaunchedEffect(pendingName) {
+                    val currentUser = FirebaseAuth.getInstance().currentUser
+                    if (currentUser != null) {
+                        val user = userRepository.getUserById(currentUser.uid)
+                        if (user != null) {
+                            val updatedUser = user.copy(username = pendingName!!)
+                            userRepository.updateUser(updatedUser)
+                        }
+                    }
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            }
+            com.example.vitazen.ui.nameinput.NameInputScreen(
+                onNameEntered = { name ->
+                    pendingName = name
                 }
             )
         }
@@ -149,14 +182,61 @@ fun AppNavGraph() {
             )
         }
 
-        // Màn hình Home - Fade in mượt mà
+        // Trang chủ (Home Main)
+        composable(
+            route = Routes.HOME_MAIN,
+            enterTransition = {
+                fadeIn(animationSpec = tween(ANIMATION_DURATION))
+            }
+        ) {
+            HomeScreen(
+                onNavigateToHome = {},
+                onNavigateToReminder = { navController.navigate(Routes.REMINDER) },
+                onNavigateToHistory = { navController.navigate(Routes.HISTORY) },
+                onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
+                selectedTab = 0,
+                onTabSelected = { index ->
+                    when (index) {
+                        0 -> {} // Đã ở trang chủ
+                        1 -> navController.navigate(Routes.REMINDER)
+                        2 -> navController.navigate(Routes.HISTORY)
+                        3 -> navController.navigate(Routes.SETTINGS)
+                    }
+                }
+            )
+        }
+
+        // Màn hình Home (cũ, dùng cho chuyển hướng sau login/register)
         composable(
             route = Routes.HOME,
             enterTransition = {
                 fadeIn(animationSpec = tween(ANIMATION_DURATION))
             }
         ) {
-            HomeScreen()
+            // Khi vào HOME, chuyển sang HOME_MAIN và clear backstack
+            LaunchedEffect(Unit) {
+                navController.navigate(Routes.HOME_MAIN) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
         }
+
+        // Màn hình Nhắc nhở
+        composable(route = Routes.REMINDER) {
+            com.example.vitazen.ui.reminder.ReminderScreen()
+        }
+
+        // Màn hình Lịch sử
+        composable(route = Routes.HISTORY) {
+            com.example.vitazen.ui.history.HistoryScreen()
+        }
+
+        // Màn hình Cài đặt (tạm thời dùng ProfileScreen)
+        composable(route = Routes.SETTINGS) {
+            com.example.vitazen.ui.profile.ProfileScreen(
+                navController = navController
+            )
+        }
+        
     }
 }
