@@ -51,6 +51,9 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation("androidx.compose.material:material-icons-extended:1.7.5")
 
+    // Image loading for Compose (avatar)
+    implementation("io.coil-kt:coil-compose:2.4.0")
+
     // Dọn dẹp các khai báo trùng lặp
     implementation("androidx.navigation:navigation-compose:2.8.0-beta05")
 
