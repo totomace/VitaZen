@@ -47,19 +47,16 @@ fun AppNavGraph() {
     val homeViewModelFactory = remember { viewModelFactory { com.example.vitazen.viewmodel.HomeViewModel(userRepository) } }
     val nameInputViewModelFactory = remember { viewModelFactory { NameInputViewModel(userRepository) } }
 
-    val welcomeViewModelFactory = remember { viewModelFactory { com.example.vitazen.viewmodel.WelcomeViewModel() } }
-
     NavHost(
         navController = navController,
-        startDestination = Routes.WELCOME
+        startDestination = "splash"
     ) {
-        composable(route = Routes.WELCOME) {
-            val welcomeViewModel: com.example.vitazen.viewmodel.WelcomeViewModel = viewModel(factory = welcomeViewModelFactory)
-            WelcomeScreen(
-                viewModel = welcomeViewModel,
-                onNavigateToLogin = {
-                    navController.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.WELCOME) { inclusive = true }
+        composable("splash") {
+            SplashScreen(
+                userRepository = userRepository,
+                onNavigate = { route ->
+                    navController.navigate(route) {
+                        popUpTo("splash") { inclusive = true }
                     }
                 }
             )
@@ -93,7 +90,7 @@ fun AppNavGraph() {
                 viewModel = loginViewModel,
                 onNavigateToHome = {
                     navController.navigate(Routes.NAME_INPUT) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 },
                 onNavigateToRegister = {
@@ -107,7 +104,7 @@ fun AppNavGraph() {
                 viewModel = nameInputViewModel,
                 onSuccess = {
                     navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.NAME_INPUT) { inclusive = true }
+                        popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
             )
@@ -144,7 +141,7 @@ fun AppNavGraph() {
             )
         }
         composable(
-            route = Routes.HOME,
+            route = Routes.HOME_MAIN,
             enterTransition = {
                 fadeIn(animationSpec = tween(ANIMATION_DURATION)) +
                 scaleIn(initialScale = 0.96f, animationSpec = tween(ANIMATION_DURATION))
@@ -171,6 +168,23 @@ fun AppNavGraph() {
                     }
                 }
             )
+        }
+        composable(
+            route = Routes.HOME,
+            enterTransition = {
+                fadeIn(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleIn(initialScale = 0.96f, animationSpec = tween(ANIMATION_DURATION))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
+            }
+        ) {
+            LaunchedEffect(Unit) {
+                navController.navigate(Routes.HOME_MAIN) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
         }
         composable(
             route = Routes.REMINDER,

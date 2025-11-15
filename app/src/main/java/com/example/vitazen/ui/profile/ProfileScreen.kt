@@ -1,7 +1,4 @@
-
 package com.example.vitazen.ui.profile
-
-import com.google.firebase.auth.FirebaseAuth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -47,13 +44,7 @@ fun ProfileScreen(
     onHistoryClick: () -> Unit = {},
     onRemindersClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
-    onLogoutClick: () -> Unit = {
-        FirebaseAuth.getInstance().signOut()
-        navController.navigate(com.example.vitazen.navigation.Routes.WELCOME) {
-            popUpTo(com.example.vitazen.navigation.Routes.WELCOME) { inclusive = true }
-            launchSingleTop = true
-        }
-    }
+    onLogoutClick: () -> Unit = {}
 ) {
     val profileMenuItems = remember {
         listOf(

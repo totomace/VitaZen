@@ -133,23 +133,12 @@ fun NameInputModalScreen(
                             name = it
                             if (uiState is NameInputUiState.Error) viewModel.resetState()
                         },
-                        label = { Text("Tên hiển thị", color = Color.Black) },
+                        label = { Text("Tên hiển thị") },
                         singleLine = true,
                         leadingIcon = {
-                            Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = Color.Black)
+                            Icon(imageVector = Icons.Default.Person, contentDescription = null)
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        textStyle = LocalTextStyle.current.copy(color = Color.Black),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            disabledTextColor = Color.Black,
-                            cursorColor = VitaZenYellow,
-                            focusedBorderColor = VitaZenYellow,
-                            unfocusedBorderColor = Color.Gray,
-                            focusedLabelColor = VitaZenYellow,
-                            unfocusedLabelColor = Color.Gray
-                        )
                     )
 
                     if (uiState is NameInputUiState.Error) {
