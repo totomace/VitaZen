@@ -1,9 +1,19 @@
+
 package com.example.vitazen.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import com.example.vitazen.ui.nameinput.NameInputModalScreen
+import com.example.vitazen.viewmodel.NameInputViewModel
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import com.example.vitazen.viewmodel.LoginViewModel
+import com.example.vitazen.viewmodel.RegisterViewModel
+import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
@@ -18,71 +28,39 @@ import com.example.vitazen.ui.home.HomeScreen
 import com.example.vitazen.ui.login.LoginScreen
 import com.example.vitazen.ui.register.RegisterScreen
 import com.example.vitazen.ui.welcome.WelcomeScreen
-import com.example.vitazen.viewmodel.LoginViewModel
-import com.example.vitazen.viewmodel.RegisterViewModel
-import com.example.vitazen.viewmodel.WelcomeViewModel
-import com.google.firebase.auth.FirebaseAuth
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-
-import androidx.compose.runtime.LaunchedEffect
-
-/**
- * Hằng số cho animation duration để tái sử dụng
- */
 private const val ANIMATION_DURATION = 400
 
 @Composable
 fun AppNavGraph() {
     val navController = rememberNavController()
-
-    // Khởi tạo UserRepository từ database
     val context = LocalContext.current
-    val database = VitaZenDatabase.getInstance(context)
-    val userRepository = UserRepository(database.userDao())
+    val userRepository = remember { UserRepository(VitaZenDatabase.getInstance(context).userDao()) }
 
-    // Factory để tạo ViewModels với dependencies
-    val loginViewModelFactory = object : ViewModelProvider.Factory {
+    fun <T : ViewModel> viewModelFactory(create: () -> T) = object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return LoginViewModel(FirebaseAuth.getInstance(), userRepository) as T
-        }
+        override fun <T2 : ViewModel> create(modelClass: Class<T2>): T2 = create() as T2
     }
 
-    val registerViewModelFactory = object : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return RegisterViewModel(FirebaseAuth.getInstance(), userRepository) as T
-        }
-    }
+    val loginViewModelFactory = remember { viewModelFactory { LoginViewModel(FirebaseAuth.getInstance(), userRepository) } }
+    val registerViewModelFactory = remember { viewModelFactory { RegisterViewModel(FirebaseAuth.getInstance(), userRepository) } }
+    val homeViewModelFactory = remember { viewModelFactory { com.example.vitazen.viewmodel.HomeViewModel(userRepository) } }
+    val nameInputViewModelFactory = remember { viewModelFactory { NameInputViewModel(userRepository) } }
 
     NavHost(
         navController = navController,
-        startDestination = Routes.WELCOME
+        startDestination = "splash"
     ) {
-        // Màn hình Welcome - Slide right to left khi thoát
-        composable(
-            route = Routes.WELCOME,
-            exitTransition = {
-                slideOutOfContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                    animationSpec = tween(ANIMATION_DURATION)
-                ) + fadeOut(animationSpec = tween(ANIMATION_DURATION))
-            }
-        ) {
-            val welcomeViewModel: WelcomeViewModel = viewModel()
-            WelcomeScreen(
-                viewModel = welcomeViewModel,
-                onNavigateToLogin = {
-                    navController.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.WELCOME) { inclusive = true }
+        composable("splash") {
+            SplashScreen(
+                userRepository = userRepository,
+                onNavigate = { route ->
+                    navController.navigate(route) {
+                        popUpTo("splash") { inclusive = true }
                     }
                 }
             )
         }
-
-        // Màn hình Login - Slide in from right
         composable(
             route = Routes.LOGIN,
             enterTransition = {
@@ -120,36 +98,17 @@ fun AppNavGraph() {
                 }
             )
         }
-
-        // Màn hình nhập tên sau đăng nhập (đưa ra ngoài, cùng cấp các route khác)
         composable(route = Routes.NAME_INPUT) {
-            androidx.compose.runtime.LaunchedEffect(Unit) {
-                // No-op, chỉ để Compose imports sẵn sàng
-            }
-            var pendingName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-            if (pendingName != null) {
-                androidx.compose.runtime.LaunchedEffect(pendingName) {
-                    val currentUser = FirebaseAuth.getInstance().currentUser
-                    if (currentUser != null) {
-                        val user = userRepository.getUserById(currentUser.uid)
-                        if (user != null) {
-                            val updatedUser = user.copy(username = pendingName!!)
-                            userRepository.updateUser(updatedUser)
-                        }
-                    }
+            val nameInputViewModel: NameInputViewModel = viewModel(factory = nameInputViewModelFactory)
+            NameInputModalScreen(
+                viewModel = nameInputViewModel,
+                onSuccess = {
                     navController.navigate(Routes.HOME) {
-                        popUpTo(0) { inclusive = true }
+                        popUpTo(Routes.LOGIN) { inclusive = true }
                     }
-                }
-            }
-            com.example.vitazen.ui.nameinput.NameInputScreen(
-                onNameEntered = { name ->
-                    pendingName = name
                 }
             )
         }
-
-        // Màn hình Register - Slide in from right, slide out to right khi back
         composable(
             route = Routes.REGISTER,
             enterTransition = {
@@ -181,15 +140,20 @@ fun AppNavGraph() {
                 }
             )
         }
-
-        // Trang chủ (Home Main)
         composable(
             route = Routes.HOME_MAIN,
             enterTransition = {
-                fadeIn(animationSpec = tween(ANIMATION_DURATION))
+                fadeIn(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleIn(initialScale = 0.96f, animationSpec = tween(ANIMATION_DURATION))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
             }
         ) {
+            val homeViewModel: com.example.vitazen.viewmodel.HomeViewModel = viewModel(factory = homeViewModelFactory)
             HomeScreen(
+                viewModel = homeViewModel,
                 onNavigateToHome = {},
                 onNavigateToReminder = { navController.navigate(Routes.REMINDER) },
                 onNavigateToHistory = { navController.navigate(Routes.HISTORY) },
@@ -197,7 +161,7 @@ fun AppNavGraph() {
                 selectedTab = 0,
                 onTabSelected = { index ->
                     when (index) {
-                        0 -> {} // Đã ở trang chủ
+                        0 -> {}
                         1 -> navController.navigate(Routes.REMINDER)
                         2 -> navController.navigate(Routes.HISTORY)
                         3 -> navController.navigate(Routes.SETTINGS)
@@ -205,38 +169,63 @@ fun AppNavGraph() {
                 }
             )
         }
-
-        // Màn hình Home (cũ, dùng cho chuyển hướng sau login/register)
         composable(
             route = Routes.HOME,
             enterTransition = {
-                fadeIn(animationSpec = tween(ANIMATION_DURATION))
+                fadeIn(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleIn(initialScale = 0.96f, animationSpec = tween(ANIMATION_DURATION))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
             }
         ) {
-            // Khi vào HOME, chuyển sang HOME_MAIN và clear backstack
             LaunchedEffect(Unit) {
                 navController.navigate(Routes.HOME_MAIN) {
                     popUpTo(0) { inclusive = true }
                 }
             }
         }
-
-        // Màn hình Nhắc nhở
-        composable(route = Routes.REMINDER) {
+        composable(
+            route = Routes.REMINDER,
+            enterTransition = {
+                fadeIn(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleIn(initialScale = 0.96f, animationSpec = tween(ANIMATION_DURATION))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
+            }
+        ) {
             com.example.vitazen.ui.reminder.ReminderScreen()
         }
-
-        // Màn hình Lịch sử
-        composable(route = Routes.HISTORY) {
+        composable(
+            route = Routes.HISTORY,
+            enterTransition = {
+                fadeIn(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleIn(initialScale = 0.96f, animationSpec = tween(ANIMATION_DURATION))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
+            }
+        ) {
             com.example.vitazen.ui.history.HistoryScreen()
         }
-
-        // Màn hình Cài đặt (tạm thời dùng ProfileScreen)
-        composable(route = Routes.SETTINGS) {
+        composable(
+            route = Routes.SETTINGS,
+            enterTransition = {
+                fadeIn(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleIn(initialScale = 0.96f, animationSpec = tween(ANIMATION_DURATION))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
+            }
+        ) {
             com.example.vitazen.ui.profile.ProfileScreen(
                 navController = navController
             )
         }
-        
     }
 }

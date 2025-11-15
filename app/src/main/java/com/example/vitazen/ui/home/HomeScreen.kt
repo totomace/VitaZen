@@ -13,6 +13,9 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.vitazen.viewmodel.HomeViewModel
+import com.example.vitazen.viewmodel.HealthActivity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,13 +47,6 @@ val Blue500 = Color(0xFF2196F3)
 val Purple400 = Color(0xFFAB47BC)
 val Purple300 = Color(0xFFBA68C8)
 
-data class HealthActivity(
-    val id: Int,
-    val date: String,
-    val type: String,
-    val value: String,
-    val color: Color
-)
 
 
 
@@ -64,16 +60,10 @@ fun HomeScreen(
     onNavigateToHistory: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     selectedTab: Int = 0,
-    onTabSelected: (Int) -> Unit = {}
+    onTabSelected: (Int) -> Unit = {},
+    viewModel: HomeViewModel = viewModel()
 ) {
-    val healthActivities = remember {
-        listOf(
-            HealthActivity(1, "15/06/2024", "Cân nặng", "68 kg", Purple500),
-            HealthActivity(2, "14/06/2024", "Huyết áp", "120/80 mmHg", Green500),
-            HealthActivity(3, "13/06/2024", "Nhịp tim", "72 bpm", Red500),
-            HealthActivity(4, "12/06/2024", "Số bước", "8,542 bước", Blue500)
-        )
-    }
+    val uiState by viewModel.uiState.collectAsState()
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -94,7 +84,7 @@ fun HomeScreen(
                 contentPadding = PaddingValues(16.dp)
             ) {
                 // Header chào mừng
-                item { WelcomeHeader() }
+                item { WelcomeHeader(userName = uiState.userName) }
                 // Tổng quan sức khỏe
                 item { HealthOverviewCard() }
                 // Quick Actions
@@ -109,7 +99,7 @@ fun HomeScreen(
                 item { ChartSection() }
                 // Hoạt động gần đây
                 item { RecentActivitiesHeader(onHistoryClick = onHistoryClick) }
-                items(healthActivities) { activity ->
+                items(uiState.healthActivities) { activity ->
                     HealthActivityItem(activity = activity)
                 }
             }
@@ -153,7 +143,7 @@ fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
 }
 
 @Composable
-fun WelcomeHeader() {
+fun WelcomeHeader(userName: String) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -205,7 +195,7 @@ fun WelcomeHeader() {
                         fontWeight = FontWeight.Normal
                     )
                     Text(
-                        text = "Ha Pham Anh Huy",
+                        text = userName,
                         fontSize = 20.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
@@ -604,7 +594,7 @@ fun HealthActivityItem(activity: HealthActivity) {
 }
 
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
     HomeScreen()

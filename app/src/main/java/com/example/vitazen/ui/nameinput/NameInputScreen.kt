@@ -1,5 +1,8 @@
 package com.example.vitazen.ui.nameinput
 
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.vitazen.viewmodel.NameInputViewModel
+import com.example.vitazen.viewmodel.NameInputUiState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.animation.AnimatedVisibility
@@ -8,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import coil.compose.AsyncImage
@@ -32,15 +36,23 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.vitazen.ui.theme.VitaZenYellow
 
 @Composable
-fun NameInputScreen(onNameEntered: (String) -> Unit) {
+fun NameInputModalScreen(
+    viewModel: NameInputViewModel,
+    onSuccess: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     var name by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
 
-    // Visibility state for entrance animation
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        // small delay improves perceived animation timing
-        visible = true
+    val uiState by viewModel.uiState.collectAsState()
+    var visible by remember { mutableStateOf(true) }
+
+    // Xử lý khi thành công
+    LaunchedEffect(uiState) {
+        if (uiState is NameInputUiState.Success) {
+            visible = false
+            kotlinx.coroutines.delay(350)
+            onSuccess((uiState as NameInputUiState.Success).userName)
+        }
     }
 
     Box(
@@ -119,7 +131,7 @@ fun NameInputScreen(onNameEntered: (String) -> Unit) {
                         value = name,
                         onValueChange = {
                             name = it
-                            error = null
+                            if (uiState is NameInputUiState.Error) viewModel.resetState()
                         },
                         label = { Text("Tên hiển thị") },
                         singleLine = true,
@@ -129,27 +141,27 @@ fun NameInputScreen(onNameEntered: (String) -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                     )
 
-                    if (error != null) {
+                    if (uiState is NameInputUiState.Error) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(error!!, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                        Text((uiState as NameInputUiState.Error).message, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
                     }
 
                     Spacer(modifier = Modifier.height(18.dp))
 
                     Button(
                         onClick = {
-                            if (name.isBlank()) {
-                                error = "Vui lòng nhập tên."
-                            } else {
-                                onNameEntered(name.trim())
-                            }
+                            viewModel.submitName(name)
                         },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = VitaZenYellow, contentColor = Color.Black)
                     ) {
-                        Text("Tiếp tục", fontWeight = FontWeight.Bold)
+                        if (uiState is NameInputUiState.Loading) {
+                            CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                        } else {
+                            Text("Tiếp tục", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -157,8 +169,4 @@ fun NameInputScreen(onNameEntered: (String) -> Unit) {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun NameInputScreenPreview() {
-    NameInputScreen(onNameEntered = {})
-}
+// Preview không dùng ViewModel thật
