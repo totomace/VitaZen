@@ -14,6 +14,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Casino
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import com.example.vitazen.util.RandomNames
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.material3.Button
@@ -41,10 +45,21 @@ fun NameInputModalScreen(
     onSuccess: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var name by remember { mutableStateOf("") }
 
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val email = currentUser?.email ?: ""
+    val suggestedName = currentUser?.displayName ?: email.substringBefore("@")
+
+    var name by remember { mutableStateOf("") }
+    var useSuggested by remember { mutableStateOf(false) }
+    // Lấy tên ngẫu nhiên từ file riêng
+    fun getRandomName(current: String): String {
+        val options = RandomNames.list.filter { it != current }
+        return if (options.isNotEmpty()) options.random() else RandomNames.list.random()
+    }
     val uiState by viewModel.uiState.collectAsState()
     var visible by remember { mutableStateOf(true) }
+
 
     // Xử lý khi thành công
     LaunchedEffect(uiState) {
@@ -55,10 +70,13 @@ fun NameInputModalScreen(
         }
     }
 
+    // Đẩy khung lên khi bàn phím mở (dùng imePadding)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .imePadding(), // Đẩy khung lên khi bàn phím mở
         contentAlignment = Alignment.Center
     ) {
         AnimatedVisibility(
@@ -80,7 +98,6 @@ fun NameInputModalScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Load Firebase avatar if present
-                    val currentUser = FirebaseAuth.getInstance().currentUser
                     val photoUrl = currentUser?.photoUrl?.toString()
 
                     Box(
@@ -131,6 +148,7 @@ fun NameInputModalScreen(
                         value = name,
                         onValueChange = {
                             name = it
+                            useSuggested = false
                             if (uiState is NameInputUiState.Error) viewModel.resetState()
                         },
                         label = { Text("Tên hiển thị") },
@@ -138,8 +156,70 @@ fun NameInputModalScreen(
                         leadingIcon = {
                             Icon(imageVector = Icons.Default.Person, contentDescription = null)
                         },
+                        trailingIcon = {
+                            // Nút xí ngầu nhiều màu, nổi bật
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        brush = Brush.linearGradient(
+                                            listOf(
+                                                Color(0xFFF9D423), // vàng
+                                                Color(0xFFFC913A), // cam
+                                                Color(0xFFED1C24), // đỏ
+                                                Color(0xFF6A82FB)  // xanh
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        name = getRandomName(name)
+                                        useSuggested = false
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Casino,
+                                        contentDescription = "Tên ngẫu nhiên",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
+                        textStyle = LocalTextStyle.current.copy(
+                            color = if (RandomNames.list.contains(name)) Color(0xFFFC913A) else Color.Black,
+                            fontWeight = if (RandomNames.list.contains(name)) FontWeight.Bold else FontWeight.Normal
+                        )
                     )
+
+                    // Chỉ hiện nếu có email
+                    if (email.isNotBlank()) {
+                        val nameOnly = suggestedName
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = useSuggested,
+                                onCheckedChange = {
+                                    useSuggested = it
+                                    if (it) name = nameOnly
+                                }
+                            )
+                            Text(
+                                text = "Dùng tên từ email: $nameOnly",
+                                fontSize = 13.sp,
+                                color = Color.Black.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
 
                     if (uiState is NameInputUiState.Error) {
                         Spacer(modifier = Modifier.height(8.dp))

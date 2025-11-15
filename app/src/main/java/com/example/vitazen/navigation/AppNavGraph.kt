@@ -49,14 +49,15 @@ fun AppNavGraph() {
 
     NavHost(
         navController = navController,
-        startDestination = "splash"
+        startDestination = Routes.WELCOME
     ) {
-        composable("splash") {
-            SplashScreen(
-                userRepository = userRepository,
-                onNavigate = { route ->
-                    navController.navigate(route) {
-                        popUpTo("splash") { inclusive = true }
+        composable(Routes.WELCOME) {
+            val welcomeViewModel: com.example.vitazen.viewmodel.WelcomeViewModel = viewModel()
+            com.example.vitazen.ui.welcome.WelcomeScreen(
+                viewModel = welcomeViewModel,
+                onNavigateToLogin = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.WELCOME) { inclusive = true }
                     }
                 }
             )
@@ -90,7 +91,7 @@ fun AppNavGraph() {
                 viewModel = loginViewModel,
                 onNavigateToHome = {
                     navController.navigate(Routes.NAME_INPUT) {
-                        popUpTo(0) { inclusive = true }
+                        popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 },
                 onNavigateToRegister = {
@@ -104,7 +105,7 @@ fun AppNavGraph() {
                 viewModel = nameInputViewModel,
                 onSuccess = {
                     navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                        popUpTo(Routes.NAME_INPUT) { inclusive = true }
                     }
                 }
             )
@@ -132,7 +133,7 @@ fun AppNavGraph() {
                 viewModel = registerViewModel,
                 onNavigateToHome = {
                     navController.navigate(Routes.HOME) {
-                        popUpTo(0) { inclusive = true }
+                        popUpTo(Routes.REGISTER) { inclusive = true }
                     }
                 },
                 onNavigateBack = {
@@ -182,7 +183,7 @@ fun AppNavGraph() {
         ) {
             LaunchedEffect(Unit) {
                 navController.navigate(Routes.HOME_MAIN) {
-                    popUpTo(0) { inclusive = true }
+                    popUpTo(Routes.HOME) { inclusive = true }
                 }
             }
         }
