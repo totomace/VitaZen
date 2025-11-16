@@ -1,8 +1,6 @@
 package com.example.vitazen.ui.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,7 +12,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material3.*
-import androidx.compose.ui.draw.shadow
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vitazen.viewmodel.HomeViewModel
@@ -117,101 +114,31 @@ fun HomeScreen(
 
 @Composable
 fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
-    val backgroundColor = com.example.vitazen.ui.theme.VitaZenYellow.copy(alpha = 0.95f)
-    val selectedColor = Color(0xFFFC913A)
-    val unselectedColor = Color(0xFF6D6D6D)
-    Surface(
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        color = backgroundColor,
-        modifier = Modifier
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                // Xóa .shadow để không đổ bóng
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-                .navigationBarsPadding(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            NavigationTabItem(
-                selected = selectedTab == 0,
-                onClick = { onTabSelected(0) },
-                icon = Icons.Default.Home,
-                label = "Trang chủ",
-                selectedColor = selectedColor,
-                unselectedColor = unselectedColor
-            )
-            NavigationTabItem(
-                selected = selectedTab == 1,
-                onClick = { onTabSelected(1) },
-                icon = Icons.Default.Notifications,
-                label = "Nhắc nhở",
-                selectedColor = selectedColor,
-                unselectedColor = unselectedColor
-            )
-            NavigationTabItem(
-                selected = selectedTab == 2,
-                onClick = { onTabSelected(2) },
-                icon = Icons.Default.History,
-                label = "Lịch sử",
-                selectedColor = selectedColor,
-                unselectedColor = unselectedColor
-            )
-            NavigationTabItem(
-                selected = selectedTab == 3,
-                onClick = { onTabSelected(3) },
-                icon = Icons.Default.Settings,
-                label = "Cài đặt",
-                selectedColor = selectedColor,
-                unselectedColor = unselectedColor
-            )
-        }
-    }
-}
-
-@Composable
-fun NavigationTabItem(
-    selected: Boolean,
-    onClick: () -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    selectedColor: Color,
-    unselectedColor: Color
-) {
-    val iconColor = if (selected) selectedColor else unselectedColor
-    val textColor = if (selected) selectedColor else unselectedColor.copy(alpha = 0.7f)
-    val fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-    val indicator = if (selected) Modifier
-        .padding(bottom = 2.dp)
-        .size(width = 32.dp, height = 4.dp)
-        .background(selectedColor, RoundedCornerShape(2.dp))
-    else Modifier.size(0.dp)
-
-    Column(
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp, horizontal = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = iconColor,
-            modifier = Modifier.size(26.dp)
+    NavigationBar {
+        NavigationBarItem(
+            selected = selectedTab == 0,
+            onClick = { onTabSelected(0) },
+            icon = { Icon(Icons.Default.Home, contentDescription = "Trang chủ") },
+            label = { Text("Trang chủ") }
         )
-        Text(
-            text = label,
-            color = textColor,
-            fontSize = 13.sp,
-            fontWeight = fontWeight,
-            maxLines = 1
+        NavigationBarItem(
+            selected = selectedTab == 1,
+            onClick = { onTabSelected(1) },
+            icon = { Icon(Icons.Default.Notifications, contentDescription = "Nhắc nhở") },
+            label = { Text("Nhắc nhở") }
         )
-        Spacer(modifier = Modifier.height(2.dp))
-        Box(modifier = indicator)
+        NavigationBarItem(
+            selected = selectedTab == 2,
+            onClick = { onTabSelected(2) },
+            icon = { Icon(Icons.Default.History, contentDescription = "Lịch sử") },
+            label = { Text("Lịch sử") }
+        )
+        NavigationBarItem(
+            selected = selectedTab == 3,
+            onClick = { onTabSelected(3) },
+            icon = { Icon(Icons.Default.Settings, contentDescription = "Cài đặt") },
+            label = { Text("Cài đặt") }
+        )
     }
 }
 

@@ -15,8 +15,6 @@ import com.example.vitazen.viewmodel.LoginViewModel
 import com.example.vitazen.viewmodel.RegisterViewModel
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.runtime.Composable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -35,8 +33,6 @@ private const val ANIMATION_DURATION = 400
 
 @Composable
 fun AppNavGraph() {
-    // State cho tab bar
-    val selectedTab = remember { androidx.compose.runtime.mutableStateOf(0) }
     val navController = rememberNavController()
     val context = LocalContext.current
     val userRepository = remember { UserRepository(VitaZenDatabase.getInstance(context).userDao()) }
@@ -159,14 +155,17 @@ fun AppNavGraph() {
             val homeViewModel: com.example.vitazen.viewmodel.HomeViewModel = viewModel(factory = homeViewModelFactory)
             HomeScreen(
                 viewModel = homeViewModel,
-                selectedTab = selectedTab.value,
+                onNavigateToHome = {},
+                onNavigateToReminder = { navController.navigate(Routes.REMINDER) },
+                onNavigateToHistory = { navController.navigate(Routes.HISTORY) },
+                onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
+                selectedTab = 0,
                 onTabSelected = { index ->
-                    selectedTab.value = index
                     when (index) {
-                        0 -> navController.navigate(Routes.HOME_MAIN) { launchSingleTop = true }
-                        1 -> navController.navigate(Routes.REMINDER) { launchSingleTop = true }
-                        2 -> navController.navigate(Routes.HISTORY) { launchSingleTop = true }
-                        3 -> navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
+                        0 -> {}
+                        1 -> navController.navigate(Routes.REMINDER)
+                        2 -> navController.navigate(Routes.HISTORY)
+                        3 -> navController.navigate(Routes.SETTINGS)
                     }
                 }
             )
@@ -199,21 +198,7 @@ fun AppNavGraph() {
                 scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
             }
         ) {
-            // Hiện ReminderScreen và thanh điều hướng
-            Column(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
-                androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.weight(1f)) {
-                    com.example.vitazen.ui.reminder.ReminderScreen()
-                }
-                com.example.vitazen.ui.home.BottomNavigationBar(selectedTab = selectedTab.value, onTabSelected = { index ->
-                    selectedTab.value = index
-                    when (index) {
-                        0 -> navController.navigate(Routes.HOME_MAIN) { launchSingleTop = true }
-                        1 -> navController.navigate(Routes.REMINDER) { launchSingleTop = true }
-                        2 -> navController.navigate(Routes.HISTORY) { launchSingleTop = true }
-                        3 -> navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
-                    }
-                })
-            }
+            com.example.vitazen.ui.reminder.ReminderScreen()
         }
         composable(
             route = Routes.HISTORY,
@@ -226,20 +211,7 @@ fun AppNavGraph() {
                 scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
             }
         ) {
-            Column(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
-                androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.weight(1f)) {
-                    com.example.vitazen.ui.history.HistoryScreen()
-                }
-                com.example.vitazen.ui.home.BottomNavigationBar(selectedTab = selectedTab.value, onTabSelected = { index ->
-                    selectedTab.value = index
-                    when (index) {
-                        0 -> navController.navigate(Routes.HOME_MAIN) { launchSingleTop = true }
-                        1 -> navController.navigate(Routes.REMINDER) { launchSingleTop = true }
-                        2 -> navController.navigate(Routes.HISTORY) { launchSingleTop = true }
-                        3 -> navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
-                    }
-                })
-            }
+            com.example.vitazen.ui.history.HistoryScreen()
         }
         composable(
             route = Routes.SETTINGS,
@@ -252,20 +224,9 @@ fun AppNavGraph() {
                 scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
             }
         ) {
-            Column(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
-                androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.weight(1f)) {
-                    com.example.vitazen.ui.profile.ProfileScreen(navController = navController)
-                }
-                com.example.vitazen.ui.home.BottomNavigationBar(selectedTab = selectedTab.value, onTabSelected = { index ->
-                    selectedTab.value = index
-                    when (index) {
-                        0 -> navController.navigate(Routes.HOME_MAIN) { launchSingleTop = true }
-                        1 -> navController.navigate(Routes.REMINDER) { launchSingleTop = true }
-                        2 -> navController.navigate(Routes.HISTORY) { launchSingleTop = true }
-                        3 -> navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
-                    }
-                })
-            }
+            com.example.vitazen.ui.profile.ProfileScreen(
+                navController = navController
+            )
         }
     }
 }
