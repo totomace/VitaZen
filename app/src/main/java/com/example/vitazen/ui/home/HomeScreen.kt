@@ -117,59 +117,49 @@ fun HomeScreen(
 
 @Composable
 fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
-    val backgroundColor = com.example.vitazen.ui.theme.VitaZenYellow.copy(alpha = 0.95f)
     val selectedColor = Color(0xFFFC913A)
     val unselectedColor = Color(0xFF6D6D6D)
-    Surface(
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        color = backgroundColor,
+    Row(
         modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .navigationBarsPadding(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                // Xóa .shadow để không đổ bóng
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-                .navigationBarsPadding(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            NavigationTabItem(
-                selected = selectedTab == 0,
-                onClick = { onTabSelected(0) },
-                icon = Icons.Default.Home,
-                label = "Trang chủ",
-                selectedColor = selectedColor,
-                unselectedColor = unselectedColor
-            )
-            NavigationTabItem(
-                selected = selectedTab == 1,
-                onClick = { onTabSelected(1) },
-                icon = Icons.Default.Notifications,
-                label = "Nhắc nhở",
-                selectedColor = selectedColor,
-                unselectedColor = unselectedColor
-            )
-            NavigationTabItem(
-                selected = selectedTab == 2,
-                onClick = { onTabSelected(2) },
-                icon = Icons.Default.History,
-                label = "Lịch sử",
-                selectedColor = selectedColor,
-                unselectedColor = unselectedColor
-            )
-            NavigationTabItem(
-                selected = selectedTab == 3,
-                onClick = { onTabSelected(3) },
-                icon = Icons.Default.Settings,
-                label = "Cài đặt",
-                selectedColor = selectedColor,
-                unselectedColor = unselectedColor
-            )
-        }
+        NavigationTabItem(
+            selected = selectedTab == 0,
+            onClick = { onTabSelected(0) },
+            icon = Icons.Default.Home,
+            label = "Trang chủ",
+            selectedColor = selectedColor,
+            unselectedColor = unselectedColor
+        )
+        NavigationTabItem(
+            selected = selectedTab == 1,
+            onClick = { onTabSelected(1) },
+            icon = Icons.Default.Notifications,
+            label = "Nhắc nhở",
+            selectedColor = selectedColor,
+            unselectedColor = unselectedColor
+        )
+        NavigationTabItem(
+            selected = selectedTab == 2,
+            onClick = { onTabSelected(2) },
+            icon = Icons.Default.History,
+            label = "Lịch sử",
+            selectedColor = selectedColor,
+            unselectedColor = unselectedColor
+        )
+        NavigationTabItem(
+            selected = selectedTab == 3,
+            onClick = { onTabSelected(3) },
+            icon = Icons.Default.Settings,
+            label = "Cài đặt",
+            selectedColor = selectedColor,
+            unselectedColor = unselectedColor
+        )
     }
 }
 
