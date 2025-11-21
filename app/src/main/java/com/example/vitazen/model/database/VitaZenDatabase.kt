@@ -14,7 +14,7 @@ import com.example.vitazen.model.data.User
  */
 @Database(
     entities = [User::class, History::class, Reminder::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class VitaZenDatabase : RoomDatabase() {
