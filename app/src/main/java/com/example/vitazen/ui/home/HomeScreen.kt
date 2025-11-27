@@ -1,6 +1,5 @@
 package com.example.vitazen.ui.home
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -28,27 +27,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.sp
 
-import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.ui.graphics.RectangleShape
 
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.vitazen.viewmodel.HomeUiState
 
 
 // Định nghĩa các màu sắc trong file này nếu chưa có trong theme
@@ -79,8 +68,6 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    var showAddDataForm by remember { mutableStateOf(false) }
-
     Box(modifier = Modifier
         .fillMaxSize()
         .background(Color.White)
@@ -102,27 +89,15 @@ fun HomeScreen(
                 // Header chào mừng
                 item { WelcomeHeader(userName = uiState.userName) }
                 // Tổng quan sức khỏe
-                item {
-                    HealthOverviewCard(
-                        uiState = uiState,
-                        onAddWater = { delta -> viewModel.addWaterLiters(delta) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 160.dp, max = 200.dp)
-                            .padding(vertical = 8.dp, horizontal = 0.dp)
-                    )
-                }
-
-                // Quick actions row
+                item { HealthOverviewCard() }
+                // Quick Actions
                 item {
                     QuickActionsRow(
-                        onAddDataClick = { showAddDataForm = true },
+                        onAddDataClick = onAddDataClick,
                         onStatsClick = onStatsClick,
                         onHistoryClick = onHistoryClick
                     )
                 }
-
-                // (Moved) The add-data form is shown as an overlay dialog-styled card instead of an inline item.
                 // Biểu đồ theo dõi
                 item { ChartSection() }
                 // Hoạt động gần đây
@@ -131,256 +106,11 @@ fun HomeScreen(
                     HealthActivityItem(activity = activity)
                 }
             }
-
             // Thanh điều hướng dưới
             BottomNavigationBar(
                 selectedTab = selectedTab,
                 onTabSelected = onTabSelected
             )
-        }
-
-        // Previously used a bottom sheet for add-data; now show a centered overlay card with dimmed background.
-        if (showAddDataForm) {
-            var selectedType by remember { mutableStateOf("Cân nặng") }
-            var value by remember { mutableStateOf("") }
-            var autoCalcBMI by remember { mutableStateOf(true) }
-            val offsetY = remember { mutableStateOf(0f) }
-            var heightInput by remember { mutableStateOf(uiState.heightCm?.toInt()?.toString() ?: "") }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.45f))
-                    .clickable(onClick = { showAddDataForm = false }),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .offset { IntOffset(0, offsetY.value.roundToInt()) }
-                        .pointerInput(Unit) {
-                            detectDragGestures { change, dragAmount ->
-                                val (_, dy) = dragAmount
-                                offsetY.value = (offsetY.value + dy).coerceAtLeast(-500f)
-                                change.consume()
-                            }
-                        }
-                        .windowInsetsPadding(WindowInsets.ime)
-                ) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp)
-                            .shadow(8.dp, RoundedCornerShape(12.dp)),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .padding(30.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Theo Dõi Sức Khỏe Hàng Ngày",
-                                color = Color(0xFF1e3a8a),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 22.sp,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 10.dp)
-                                    .border(BorderStroke(2.dp, Color(0xFFF0F0F0)), shape = RectangleShape),
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(15.dp))
-
-                            var weightError by remember { mutableStateOf<String?>(null) }
-                            var heightError by remember { mutableStateOf<String?>(null) }
-                            var heartRate by remember { mutableStateOf("") }
-                            var heartRateError by remember { mutableStateOf<String?>(null) }
-                            var waterInput by remember { mutableStateOf("") }
-                            var waterError by remember { mutableStateOf<String?>(null) }
-
-                            // Weight
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("⚖️", fontSize = 16.sp, modifier = Modifier.padding(end = 4.dp))
-                                    Text("Cân nặng (kg):", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color(0xFF333333))
-                                }
-                                OutlinedTextField(
-                                    value = value,
-                                    onValueChange = {
-                                        value = it
-                                        weightError = null
-                                    },
-                                    placeholder = { Text("Nhập cân nặng...") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    isError = weightError != null,
-                                    keyboardOptions = KeyboardOptions.Default.copy(
-                                        keyboardType = KeyboardType.Number,
-                                        imeAction = ImeAction.Next
-                                    ),
-                                )
-                                if (weightError != null) {
-                                    Text(text = weightError!!, color = Color.Red, fontSize = 12.sp)
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(20.dp))
-
-                            // Height
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("🟪", fontSize = 16.sp, color = Color(0xFF7C3AED), modifier = Modifier.padding(end = 4.dp))
-                                    Text("Chiều cao (cm):", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color(0xFF333333))
-                                }
-                                OutlinedTextField(
-                                    value = heightInput,
-                                    onValueChange = {
-                                        heightInput = it
-                                        heightError = null
-                                    },
-                                    placeholder = { Text("Nhập chiều cao...") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    isError = heightError != null,
-                                    keyboardOptions = KeyboardOptions.Default.copy(
-                                        keyboardType = KeyboardType.Number,
-                                        imeAction = ImeAction.Next
-                                    ),
-                                )
-                                if (heightError != null) {
-                                    Text(text = heightError!!, color = Color.Red, fontSize = 12.sp)
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(20.dp))
-
-                            // Heart rate
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("❤️", fontSize = 16.sp, modifier = Modifier.padding(end = 4.dp))
-                                    Text("Nhịp tim (bpm):", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color(0xFF333333))
-                                }
-                                OutlinedTextField(
-                                    value = heartRate,
-                                    onValueChange = {
-                                        heartRate = it
-                                        heartRateError = null
-                                    },
-                                    placeholder = { Text("Nhập nhịp tim...") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    isError = heartRateError != null,
-                                    keyboardOptions = KeyboardOptions.Default.copy(
-                                        keyboardType = KeyboardType.Number,
-                                        imeAction = ImeAction.Next
-                                    ),
-                                )
-                                if (heartRateError != null) {
-                                    Text(text = heartRateError!!, color = Color.Red, fontSize = 12.sp)
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(20.dp))
-
-                            // Water intake
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("💧", fontSize = 16.sp, color = Color(0xFF3B82F6), modifier = Modifier.padding(end = 4.dp))
-                                    Text("Số lít nước đã uống (L):", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color(0xFF333333))
-                                }
-                                OutlinedTextField(
-                                    value = waterInput,
-                                    onValueChange = {
-                                        waterInput = it
-                                        waterError = null
-                                    },
-                                    placeholder = { Text("Nhập số lít nước...") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    isError = waterError != null,
-                                    keyboardOptions = KeyboardOptions.Default.copy(
-                                        keyboardType = KeyboardType.Number,
-                                        imeAction = ImeAction.Done
-                                    ),
-                                )
-                                if (waterError != null) {
-                                    Text(text = waterError!!, color = Color.Red, fontSize = 12.sp)
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(15.dp))
-
-                            Button(
-                                onClick = {
-                                    // Validate weight
-                                    val parsedWeight = value.trim().replace(",", ".").toFloatOrNull()
-                                    if (parsedWeight == null) {
-                                        weightError = "Vui lòng nhập cân nặng hợp lệ (số)."
-                                        return@Button
-                                    }
-
-                                    // Validate height
-                                    val parsedHeight = heightInput.trim().replace("cm", "").replace(" ", "").toFloatOrNull()
-                                    if (heightInput.isNotBlank() && parsedHeight == null) {
-                                        heightError = "Vui lòng nhập chiều cao hợp lệ (số)."
-                                        return@Button
-                                    }
-
-                                    // Validate heart rate
-                                    val parsedHeart = heartRate.trim().toIntOrNull()
-                                    if (heartRate.isNotBlank() && parsedHeart == null) {
-                                        heartRateError = "Vui lòng nhập nhịp tim hợp lệ (số)."
-                                        return@Button
-                                    }
-
-                                    // Validate water
-                                    val parsedWater = waterInput.trim().replace(",", ".").toFloatOrNull()
-                                    if (waterInput.isNotBlank() && parsedWater == null) {
-                                        waterError = "Vui lòng nhập số lít nước hợp lệ (số)."
-                                        return@Button
-                                    }
-
-                                    // Save height if user entered a value
-                                    if (parsedHeight != null) {
-                                        viewModel.setHeight(parsedHeight)
-                                    }
-
-                                    // Save weight and auto-calc BMI
-                                    viewModel.addWeightWithOptionalBMI(parsedWeight.toString(), true)
-
-                                    // Save heart rate
-                                    if (parsedHeart != null) {
-                                        viewModel.addHealthActivity("Nhịp tim", parsedHeart.toString())
-                                    }
-
-                                    // Save water
-                                    if (parsedWater != null) {
-                                        viewModel.addWaterLiters(parsedWater)
-                                    }
-
-                                    // reset and close
-                                    value = ""
-                                    heightInput = parsedHeight?.toInt()?.toString() ?: heightInput
-                                    heartRate = ""
-                                    waterInput = ""
-                                    weightError = null
-                                    heightError = null
-                                    heartRateError = null
-                                    waterError = null
-                                    showAddDataForm = false
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3b82f6)),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                            ) {
-                                Text("Cập Nhật & Lưu", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -452,6 +182,9 @@ fun NavigationTabItem(
     selectedColor: Color,
     unselectedColor: Color
 ) {
+    val iconColor = if (selected) selectedColor else unselectedColor
+    val textColor = if (selected) selectedColor else unselectedColor.copy(alpha = 0.7f)
+    val fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
     val indicator = if (selected) Modifier
         .padding(bottom = 2.dp)
         .size(width = 32.dp, height = 4.dp)
@@ -467,19 +200,17 @@ fun NavigationTabItem(
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = if (selected) selectedColor else unselectedColor
+            tint = iconColor,
+            modifier = Modifier.size(26.dp)
         )
-
-        Spacer(modifier = Modifier.height(0.dp))
-
         Text(
             text = label,
-            color = if (selected) selectedColor else unselectedColor,
-            fontSize = 12.sp
+            color = textColor,
+            fontSize = 13.sp,
+            fontWeight = fontWeight,
+            maxLines = 1
         )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
+        Spacer(modifier = Modifier.height(2.dp))
         Box(modifier = indicator)
     }
 }
@@ -554,9 +285,10 @@ fun WelcomeHeader(userName: String) {
 }
 
 @Composable
-fun HealthOverviewCard(uiState: HomeUiState, onAddWater: (Float) -> Unit, modifier: Modifier) {
+fun HealthOverviewCard() {
     Card(
-        modifier = modifier,
+        modifier = Modifier
+            .fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
@@ -564,72 +296,41 @@ fun HealthOverviewCard(uiState: HomeUiState, onAddWater: (Float) -> Unit, modifi
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 18.dp, horizontal = 20.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
             Text(
                 text = "Tổng quan sức khỏe",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF2D3748),
-                modifier = Modifier.align(Alignment.Start)
+                color = Color(0xFF2D3748)
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Compute latest values from uiState.healthActivities
-                val latestWeight = uiState.healthActivities.firstOrNull { it.type == "Cân nặng" }?.value?.takeIf { it.isNotBlank() } ?: "-"
-                val latestBMI = uiState.healthActivities.firstOrNull { it.type == "BMI" }?.value?.takeIf { it.isNotBlank() } ?: "-"
-                val latestHR = uiState.healthActivities.firstOrNull { it.type == "Nhịp tim" }?.value?.takeIf { it.isNotBlank() } ?: "-"
-                val waterLiters = uiState.waterLiters.takeIf { it > 0 }?.toString() ?: "-"
-
                 HealthMetricItem(
                     title = "Cân nặng",
-                    value = latestWeight,
-                    subtitle = "",
+                    value = "50 kg",
+                    subtitle = "Bình thường",
                     color = Purple500
                 )
 
                 HealthMetricItem(
                     title = "BMI",
-                    value = latestBMI,
-                    subtitle = "",
+                    value = "22.5",
+                    subtitle = "Lý tưởng",
                     color = Green500
                 )
 
                 HealthMetricItem(
                     title = "Nhịp tim",
-                    value = latestHR,
-                    subtitle = "",
+                    value = "72",
+                    subtitle = "Bình thường",
                     color = Red500
                 )
-
-                HealthMetricItem(
-                    title = "Nước uống",
-                    value = waterLiters,
-                    subtitle = "lít",
-                    color = Blue500
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            // Water metric with small controls
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Nước (L)", fontWeight = FontWeight.Medium)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "${uiState.waterLiters}")
-                    Spacer(modifier = Modifier.width(12.dp))
-                    IconButton(onClick = { onAddWater(0.25f) }) {
-                        Text("+0.25L")
-                    }
-                    IconButton(onClick = { onAddWater(-0.25f) }) {
-                        Text("-0.25L")
-                    }
-                }
             }
         }
     }
@@ -647,26 +348,33 @@ fun HealthMetricItem(
     ) {
         Box(
             modifier = Modifier
-                .size(72.dp)
+                .size(70.dp)
                 .clip(CircleShape)
-                .background(color.copy(alpha = 0.13f)),
+                .background(color.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = value,
-                fontSize = 19.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = color
             )
         }
 
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = title,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             color = Color(0xFF718096),
             textAlign = TextAlign.Center
+        )
+
+        Text(
+            text = subtitle,
+            fontSize = 10.sp,
+            color = color,
+            fontWeight = FontWeight.Medium
         )
     }
 }

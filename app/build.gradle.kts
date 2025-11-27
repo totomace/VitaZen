@@ -72,7 +72,6 @@ dependencies {
 
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:21.2.0")
-    implementation(libs.androidx.compose.foundation)
 
     // --- ROOM DATABASE (OFFLINE-FIRST) ---
     val roomVersion = "2.6.1"
