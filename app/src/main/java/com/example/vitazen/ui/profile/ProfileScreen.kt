@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.vitazen.ui.home.HomeScreen
+import com.example.vitazen.viewmodel.ProfileViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 
 // Data class cho menu items
 data class ProfileMenuItem(
@@ -38,6 +41,7 @@ data class ProfileMenuItem(
 @Composable
 fun ProfileScreen(
     navController: NavController,
+    viewModel: ProfileViewModel = viewModel(),
     onBackClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
@@ -46,6 +50,7 @@ fun ProfileScreen(
     onAboutClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val profileMenuItems = remember {
         listOf(
             ProfileMenuItem(1, "Chỉnh sửa hồ sơ", "Cập nhật thông tin cá nhân", Icons.Default.Edit, Color(0xFF6200EE)),
@@ -65,6 +70,9 @@ fun ProfileScreen(
         // Header với ảnh đại diện
         item {
             ProfileHeader(
+                userName = uiState.user?.username ?: "User",
+                userEmail = uiState.user?.email ?: "",
+                photoUrl = uiState.photoUrl,
                 onBackClick = onBackClick,
                 onEditProfileClick = onEditProfileClick
             )
@@ -72,7 +80,16 @@ fun ProfileScreen(
 
         // Thống kê nhanh
         item {
-            HealthStatsSection()
+            HealthStatsSection(
+                weight = uiState.healthData?.weight,
+                bmi = uiState.bmi,
+                bmiCategory = uiState.bmiCategory,
+                heartRate = uiState.healthData?.heartRate,
+                bloodPressure = uiState.healthData?.let {
+                    // Giả sử có trong data, hoặc dùng giá trị mặc định
+                    "120/80"
+                } ?: "--"
+            )
         }
 
         // Menu chức năng - Sửa lỗi items ở đây
@@ -89,7 +106,10 @@ fun ProfileScreen(
                         3 -> onRemindersClick()
                         4 -> onSettingsClick()
                         5 -> onAboutClick()
-                        6 -> onLogoutClick()
+                        6 -> {
+                            viewModel.logout()
+                            onLogoutClick()
+                        }
                     }
                 }
             )
@@ -104,6 +124,9 @@ fun ProfileScreen(
 
 @Composable
 fun ProfileHeader(
+    userName: String,
+    userEmail: String,
+    photoUrl: String?,
     onBackClick: () -> Unit,
     onEditProfileClick: () -> Unit
 ) {
@@ -146,28 +169,40 @@ fun ProfileHeader(
                     .background(Color.White.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Avatar",
-                    tint = Color.White,
-                    modifier = Modifier.size(50.dp)
-                )
+                if (!photoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = photoUrl,
+                        contentDescription = "Avatar",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Avatar",
+                        tint = Color.White,
+                        modifier = Modifier.size(50.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Nguyễn Văn A",
+                text = userName,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
 
-            Text(
-                text = "nguyenvana@email.com",
-                fontSize = 16.sp,
-                color = Color.White.copy(alpha = 0.9f)
-            )
+            if (userEmail.isNotBlank()) {
+                Text(
+                    text = userEmail,
+                    fontSize = 16.sp,
+                    color = Color.White.copy(alpha = 0.9f)
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -197,7 +232,13 @@ fun ProfileHeader(
 }
 
 @Composable
-fun HealthStatsSection() {
+fun HealthStatsSection(
+    weight: Float?,
+    bmi: Float?,
+    bmiCategory: String,
+    heartRate: Int?,
+    bloodPressure: String
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -225,26 +266,26 @@ fun HealthStatsSection() {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 StatItem(
-                    value = "68 kg",
+                    value = weight?.let { "${String.format("%.1f", it)} kg" } ?: "--",
                     label = "Cân nặng",
                     color = Color(0xFF6200EE)
                 )
 
                 StatItem(
-                    value = "22.5",
-                    label = "BMI",
+                    value = bmi?.let { "${String.format("%.1f", it)}" } ?: "--",
+                    label = "BMI${if (bmiCategory.isNotBlank()) "\n($bmiCategory)" else ""}",
                     color = Color(0xFF4CAF50)
                 )
 
                 StatItem(
-                    value = "72",
-                    label = "Nhịp tim",
+                    value = heartRate?.toString() ?: "--",
+                    label = "Nhịp tim\n(bpm)",
                     color = Color(0xFFF44336)
                 )
 
                 StatItem(
-                    value = "120/80",
-                    label = "Huyết áp",
+                    value = bloodPressure,
+                    label = "Huyết áp\n(mmHg)",
                     color = Color(0xFF2196F3)
                 )
             }
@@ -392,6 +433,12 @@ fun ProfileFooterp() { // DEFINITION 2 - The duplicate
 @Preview
 @Composable
 fun HealthStatsSectionp() {
-    HealthStatsSection()
+    HealthStatsSection(
+        weight = 68f,
+        bmi = 22.5f,
+        bmiCategory = "Bình thường",
+        heartRate = 72,
+        bloodPressure = "120/80"
+    )
 }
 
