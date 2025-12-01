@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vitazen.viewmodel.HomeViewModel
 import com.example.vitazen.viewmodel.HealthActivity
+import com.example.vitazen.model.data.HealthData
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,7 +39,13 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Home
 
 import androidx.compose.ui.tooling.preview.Preview
-
+import com.example.vitazen.model.repository.HealthDataRepository
+import com.example.vitazen.model.database.VitaZenDatabase
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.activity.compose.BackHandler
 
 // Định nghĩa các màu sắc trong file này nếu chưa có trong theme
 val Purple200 = Color(0xFFBB86FC)
@@ -64,9 +71,28 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit = {},
     selectedTab: Int = 0,
     onTabSelected: (Int) -> Unit = {},
+    // Thay đổi ở đây
     viewModel: HomeViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    
+    // Xử lý nút back - thoát app thay vì quay lại màn hình trước
+    BackHandler {
+        // Thoát app
+        (context as? androidx.activity.ComponentActivity)?.finish()
+    }
+    val healthDataRepository = remember { HealthDataRepository(VitaZenDatabase.getInstance(context).healthDataDao()) }
+    val viewModel: HomeViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            return HomeViewModel(
+                com.example.vitazen.model.repository.UserRepository(VitaZenDatabase.getInstance(context).userDao()),
+                healthDataRepository
+            ) as T
+        }
+    })
     val uiState by viewModel.uiState.collectAsState()
+
+    var showInputDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -89,11 +115,11 @@ fun HomeScreen(
                 // Header chào mừng
                 item { WelcomeHeader(userName = uiState.userName) }
                 // Tổng quan sức khỏe
-                item { HealthOverviewCard() }
+                item { HealthOverviewCard(healthData = uiState.healthData) }
                 // Quick Actions
                 item {
                     QuickActionsRow(
-                        onAddDataClick = onAddDataClick,
+                        onAddDataClick = { showInputDialog = true },
                         onStatsClick = onStatsClick,
                         onHistoryClick = onHistoryClick
                     )
@@ -112,6 +138,18 @@ fun HomeScreen(
                 onTabSelected = onTabSelected
             )
         }
+
+        // Dialog nhập dữ liệu sức khỏe
+        HealthDataInputDialog(
+            show = showInputDialog,
+            initialData = uiState.healthData,
+            onDismiss = { showInputDialog = false },
+            onSave = { w, h, hr, wi ->
+                viewModel.saveHealthData(w, h, hr, wi)
+                showInputDialog = false
+            },
+            viewModel = viewModel // Thêm tham số viewModel ở đây
+        )
     }
 }
 
@@ -285,7 +323,7 @@ fun WelcomeHeader(userName: String) {
 }
 
 @Composable
-fun HealthOverviewCard() {
+fun HealthOverviewCard(healthData: HealthData?) {
     Card(
         modifier = Modifier
             .fillMaxWidth(),
@@ -309,27 +347,49 @@ fun HealthOverviewCard() {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceEvenly // Sửa lại cho đều
             ) {
                 HealthMetricItem(
                     title = "Cân nặng",
-                    value = "50 kg",
-                    subtitle = "Bình thường",
-                    color = Purple500
+                    value = healthData?.weight?.let { "${it} kg" } ?: "--",
+                    subtitle = getWeightStatus(healthData?.weight, healthData?.height),
+                    color = Purple500,
+                    statusColor = getStatusColor(getWeightStatus(healthData?.weight, healthData?.height)),
+                    modifier = Modifier.weight(1f)
                 )
-
+                HealthMetricItem(
+                    title = "Chiều cao",
+                    value = healthData?.height?.let { "${it} cm" } ?: "--",
+                    subtitle = "",
+                    color = Blue500,
+                    modifier = Modifier.weight(1f)
+                )
                 HealthMetricItem(
                     title = "BMI",
-                    value = "22.5",
-                    subtitle = "Lý tưởng",
-                    color = Green500
+                    value = healthData?.let {
+                        if (it.height > 0f) {
+                            val bmi = it.weight / ((it.height / 100f) * (it.height / 100f))
+                            String.format("%.1f", bmi)
+                        } else "--"
+                    } ?: "--",
+                    subtitle = getBMIStatus(healthData?.weight, healthData?.height),
+                    color = Color(0xFF43A047),
+                    statusColor = getStatusColor(getBMIStatus(healthData?.weight, healthData?.height)),
+                    modifier = Modifier.weight(1f)
                 )
-
                 HealthMetricItem(
                     title = "Nhịp tim",
-                    value = "72",
-                    subtitle = "Bình thường",
-                    color = Red500
+                    value = healthData?.heartRate?.let { "$it bpm" } ?: "--",
+                    subtitle = "",
+                    color = Red500,
+                    modifier = Modifier.weight(1f)
+                )
+                HealthMetricItem(
+                    title = "Nước uống",
+                    value = healthData?.waterIntake?.let { "${it} l" } ?: "--",
+                    subtitle = "",
+                    color = Green500,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
@@ -341,9 +401,12 @@ fun HealthMetricItem(
     title: String,
     value: String,
     subtitle: String,
-    color: Color
+    color: Color,
+    statusColor: Color = Color.Gray,
+    modifier: Modifier = Modifier // Thêm modifier để chia đều không gian
 ) {
     Column(
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -357,7 +420,9 @@ fun HealthMetricItem(
                 text = value,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = color
+                color = color,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(4.dp)
             )
         }
 
@@ -373,7 +438,7 @@ fun HealthMetricItem(
         Text(
             text = subtitle,
             fontSize = 10.sp,
-            color = color,
+            color = statusColor,
             fontWeight = FontWeight.Medium
         )
     }
@@ -666,11 +731,203 @@ fun HealthActivityItem(activity: HealthActivity) {
     }
 }
 
+@Composable
+fun HealthDataInputDialog(
+    show: Boolean,
+    initialData: HealthData?,
+    onDismiss: () -> Unit,
+    onSave: (Float, Float, Int?, Float) -> Unit,
+    viewModel: HomeViewModel
+) {
+    var weight by remember { mutableStateOf(initialData?.weight?.toString() ?: "") }
+    var height by remember { mutableStateOf(initialData?.height?.toString() ?: "") }
+    var heartRate by remember { mutableStateOf(initialData?.heartRate?.toString() ?: "") }
+    var waterIntake by remember { mutableStateOf(initialData?.waterIntake?.toString() ?: "") }
+    var yesterdayData by remember { mutableStateOf<HealthData?>(null) }
+
+    if (show) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            shape = RoundedCornerShape(24.dp),
+            containerColor = Color.White,
+            title = {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "Theo Dõi Sức Khỏe Hàng Ngày",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1746A2),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = weight,
+                        onValueChange = { weight = it },
+                        textStyle = LocalTextStyle.current.copy(color = Color.Black, textAlign = TextAlign.Start),
+                        label = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    painter = rememberVectorPainter(Icons.Default.MonitorHeart),
+                                    contentDescription = null,
+                                    tint = Color(0xFF1746A2),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Cân nặng (kg)", color = Color(0xFF1746A2))
+                            }
+                        },
+                        placeholder = { Text("Nhập cân nặng...", color = Color.Gray, textAlign = TextAlign.Start) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    OutlinedTextField(
+                        value = height,
+                        onValueChange = { height = it },
+                        textStyle = LocalTextStyle.current.copy(color = Color.Black, textAlign = TextAlign.Start),
+                        label = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    painter = rememberVectorPainter(Icons.Default.Favorite),
+                                    contentDescription = null,
+                                    tint = Color(0xFF8F43FD),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Chiều cao (cm)", color = Color(0xFF8F43FD))
+                            }
+                        },
+                        placeholder = { Text("Nhập chiều cao...", color = Color.Gray, textAlign = TextAlign.Start) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    OutlinedTextField(
+                        value = heartRate,
+                        onValueChange = { heartRate = it },
+                        textStyle = LocalTextStyle.current.copy(color = Color.Black),
+                        label = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    painter = rememberVectorPainter(Icons.Default.Favorite),
+                                    contentDescription = null,
+                                    tint = Color(0xFFFF3A44),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Nhịp tim (bpm)", color = Color(0xFFFF3A44))
+                            }
+                        },
+                        placeholder = { Text("Nhập nhịp tim...", color = Color.Gray) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    OutlinedTextField(
+                        value = waterIntake,
+                        onValueChange = { waterIntake = it },
+                        textStyle = LocalTextStyle.current.copy(color = Color.Black),
+                        label = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    painter = rememberVectorPainter(Icons.Default.MonitorHeart),
+                                    contentDescription = null,
+                                    tint = Color(0xFF00B2FF),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Số lít nước đã uống (L)", color = Color(0xFF00B2FF))
+                            }
+                        },
+                        placeholder = { Text("Nhập số lít nước...", color = Color.Gray) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                        Button(
+                            onClick = {
+                                viewModel.loadYesterdayHealthData { data ->
+                                    yesterdayData = data
+                                    if (data != null) {
+                                        weight = data.weight.toString()
+                                        height = data.height.toString()
+                                        heartRate = data.heartRate?.toString() ?: ""
+                                        waterIntake = data.waterIntake.toString()
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB2B2B2)),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            Text("Lấy dữ liệu hôm qua", color = Color.White, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val w = weight.toFloatOrNull() ?: yesterdayData?.weight ?: 0f
+                        val h = height.toFloatOrNull() ?: yesterdayData?.height ?: 0f
+                        val hr = if (heartRate.isNotBlank()) heartRate.toIntOrNull() else yesterdayData?.heartRate
+                        val wi = waterIntake.toFloatOrNull() ?: yesterdayData?.waterIntake ?: 0f
+                        onSave(w, h, hr, wi)
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Cập Nhật & Lưu", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text("Hủy") }
+            }
+        )
+    }
+}
+
+fun getWeightStatus(weight: Float?, height: Float?): String {
+    if (weight == null || height == null || height <= 0f) return "--"
+    val bmi = weight / ((height / 100f) * (height / 100f))
+    return getBMIStatusByValue(bmi)
+}
+
+fun getBMIStatus(weight: Float?, height: Float?): String {
+    if (weight == null || height == null || height <= 0f) return "--"
+    val bmi = weight / ((height / 100f) * (height / 100f))
+    return getBMIStatusByValue(bmi)
+}
+
+fun getBMIStatusByValue(bmi: Float): String {
+    return when {
+        bmi < 18.5f -> "Thiếu cân"
+        bmi < 25f -> "Bình thường"
+        bmi < 30f -> "Thừa cân"
+        else -> "Béo phì"
+    }
+}
+
+fun getStatusColor(status: String): Color {
+    return when (status) {
+        "Thiếu cân" -> Color(0xFF42A5F5)
+        "Bình thường" -> Color(0xFF43A047)
+        "Thừa cân" -> Color(0xFFFFA726)
+        "Béo phì" -> Color(0xFFE53935)
+        else -> Color.Gray
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
     HomeScreen()
 }
-
-

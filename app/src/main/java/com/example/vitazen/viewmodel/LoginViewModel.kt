@@ -102,11 +102,12 @@ class LoginViewModel(
                         // User đã tồn tại -> update lastLoginAt
                         userRepository.updateLastLogin(firebaseUser.uid)
                     } else {
-                        // User mới -> insert vào database
+                        // User mới -> insert vào database với username rỗng
+                        // Để màn hình NAME_INPUT xử lý việc nhập tên
                         val user = User(
                             uid = firebaseUser.uid,
                             email = firebaseUser.email ?: "",
-                            username = firebaseUser.displayName ?: "User",
+                            username = "", // Để trống, bắt buộc phải nhập tên
                             profilePictureUrl = firebaseUser.photoUrl?.toString(),
                             createdAt = System.currentTimeMillis(),
                             lastLoginAt = System.currentTimeMillis()
@@ -161,10 +162,27 @@ class LoginViewModel(
             try {
                 val authResult = auth.signInWithEmailAndPassword(email, password).await()
                 
-                // Update lastLoginAt trong Room Database
+                // Lưu/Update user vào Room Database
                 val firebaseUser = authResult.user
                 if (firebaseUser != null && userRepository != null) {
-                    userRepository.updateLastLogin(firebaseUser.uid)
+                    // Kiểm tra xem user đã tồn tại chưa
+                    val existingUser = userRepository.getUserById(firebaseUser.uid)
+
+                    if (existingUser != null) {
+                        // User đã tồn tại -> update lastLoginAt
+                        userRepository.updateLastLogin(firebaseUser.uid)
+                    } else {
+                        // User mới (có thể do đăng ký từ thiết bị khác) -> insert vào database với username rỗng
+                        val user = User(
+                            uid = firebaseUser.uid,
+                            email = firebaseUser.email ?: "",
+                            username = "", // Để trống, bắt buộc phải nhập tên
+                            profilePictureUrl = firebaseUser.photoUrl?.toString(),
+                            createdAt = System.currentTimeMillis(),
+                            lastLoginAt = System.currentTimeMillis()
+                        )
+                        userRepository.insertOrUpdateUser(user)
+                    }
                 }
                 
                 _effect.emit(LoginEffect.NavigateToHome)

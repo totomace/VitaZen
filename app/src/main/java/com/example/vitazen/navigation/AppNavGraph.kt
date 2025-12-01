@@ -29,6 +29,7 @@ import com.example.vitazen.ui.home.HomeScreen
 import com.example.vitazen.ui.login.LoginScreen
 import com.example.vitazen.ui.register.RegisterScreen
 import com.example.vitazen.ui.welcome.WelcomeScreen
+import com.example.vitazen.model.repository.HealthDataRepository
 
 private const val ANIMATION_DURATION = 250
 
@@ -39,6 +40,7 @@ fun AppNavGraph() {
     val navController = rememberNavController()
     val context = LocalContext.current
     val userRepository = remember { UserRepository(VitaZenDatabase.getInstance(context).userDao()) }
+    val healthDataRepository = remember { HealthDataRepository(VitaZenDatabase.getInstance(context).healthDataDao()) }
 
     fun <T : ViewModel> viewModelFactory(create: () -> T) = object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
@@ -47,19 +49,41 @@ fun AppNavGraph() {
 
     val loginViewModelFactory = remember { viewModelFactory { LoginViewModel(FirebaseAuth.getInstance(), userRepository) } }
     val registerViewModelFactory = remember { viewModelFactory { RegisterViewModel(FirebaseAuth.getInstance(), userRepository) } }
-    val homeViewModelFactory = remember { viewModelFactory { com.example.vitazen.viewmodel.HomeViewModel(userRepository) } }
+    val homeViewModelFactory = remember { viewModelFactory { com.example.vitazen.viewmodel.HomeViewModel(userRepository, healthDataRepository) } }
     val nameInputViewModelFactory = remember { viewModelFactory { NameInputViewModel(userRepository) } }
+    val welcomeViewModelFactory = remember { viewModelFactory { com.example.vitazen.viewmodel.WelcomeViewModel(userRepository, FirebaseAuth.getInstance()) } }
 
+    // Đặt startDestination thành "splash" và đưa composable("splash") vào trong NavHost
     NavHost(
         navController = navController,
-        startDestination = Routes.WELCOME
+        startDestination = "splash"
     ) {
+        composable("splash") {
+            SplashScreen(
+                userRepository = userRepository,
+                onNavigate = { route ->
+                    navController.navigate(route) {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                }
+            )
+        }
         composable(Routes.WELCOME) {
-            val welcomeViewModel: com.example.vitazen.viewmodel.WelcomeViewModel = viewModel()
+            val welcomeViewModel: com.example.vitazen.viewmodel.WelcomeViewModel = viewModel(factory = welcomeViewModelFactory)
             com.example.vitazen.ui.welcome.WelcomeScreen(
                 viewModel = welcomeViewModel,
                 onNavigateToLogin = {
                     navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.WELCOME) { inclusive = true }
+                    }
+                },
+                onNavigateToHome = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onNavigateToNameInput = {
+                    navController.navigate(Routes.NAME_INPUT) {
                         popUpTo(Routes.WELCOME) { inclusive = true }
                     }
                 }
@@ -108,7 +132,7 @@ fun AppNavGraph() {
                 viewModel = nameInputViewModel,
                 onSuccess = {
                     navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.NAME_INPUT) { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )
@@ -135,7 +159,7 @@ fun AppNavGraph() {
             RegisterScreen(
                 viewModel = registerViewModel,
                 onNavigateToHome = {
-                    navController.navigate(Routes.HOME) {
+                    navController.navigate(Routes.NAME_INPUT) {
                         popUpTo(Routes.REGISTER) { inclusive = true }
                     }
                 },

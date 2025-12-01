@@ -2,6 +2,8 @@ package com.example.vitazen.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.vitazen.model.repository.UserRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
@@ -26,13 +28,26 @@ sealed class WelcomeEffect {
      * Hiệu ứng yêu cầu View điều hướng đến màn hình Login.
      */
     data object NavigateToLogin : WelcomeEffect()
+    
+    /**
+     * Hiệu ứng yêu cầu View điều hướng đến màn hình Home.
+     */
+    data object NavigateToHome : WelcomeEffect()
+    
+    /**
+     * Hiệu ứng yêu cầu View điều hướng đến màn hình nhập tên.
+     */
+    data object NavigateToNameInput : WelcomeEffect()
 }
 
 /**
  * ViewModel cho màn hình WelcomeScreen.
  * Chịu trách nhiệm xử lý logic và quản lý trạng thái (nếu có).
  */
-class WelcomeViewModel : ViewModel() {
+class WelcomeViewModel(
+    private val userRepository: UserRepository? = null,
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+) : ViewModel() {
 
     // _effect là một SharedFlow để gửi các hiệu ứng một lần từ ViewModel đến View.
     // Nó là private để chỉ ViewModel mới có thể gửi hiệu ứng.
@@ -48,10 +63,46 @@ class WelcomeViewModel : ViewModel() {
     fun handleEvent(event: WelcomeEvent) {
         when (event) {
             is WelcomeEvent.StartButtonClicked -> {
-                // Khi người dùng bấm nút Start, chúng ta sẽ xử lý logic ở đây.
-                // Hiện tại, logic chỉ đơn giản là yêu cầu View chuyển màn hình.
+                // Kiểm tra trạng thái đăng nhập trước khi navigate
+                checkAuthenticationAndNavigate()
+            }
+        }
+    }
+    
+    /**
+     * Kiểm tra trạng thái đăng nhập và quyết định màn hình tiếp theo.
+     */
+    private fun checkAuthenticationAndNavigate() {
+        viewModelScope.launch {
+            val currentUser = auth.currentUser
+            android.util.Log.d("WelcomeViewModel", "=== START CHECK AUTH ===")
+            android.util.Log.d("WelcomeViewModel", "Current user: ${currentUser?.uid}")
+            android.util.Log.d("WelcomeViewModel", "UserRepository: ${userRepository != null}")
+            
+            if (currentUser == null) {
+                // Chưa đăng nhập -> đến màn hình Login
+                android.util.Log.d("WelcomeViewModel", "❌ No user logged in -> LOGIN")
+                triggerEffect(WelcomeEffect.NavigateToLogin)
+            } else if (userRepository != null) {
+                // Đã đăng nhập -> kiểm tra username
+                val user = userRepository.getUserById(currentUser.uid)
+                android.util.Log.d("WelcomeViewModel", "User from DB: uid=${user?.uid}, username='${user?.username}'")
+                
+                if (user == null || user.username.isBlank()) {
+                    // Chưa có username -> đến màn hình nhập tên
+                    android.util.Log.d("WelcomeViewModel", "❌ No username -> NAME_INPUT")
+                    triggerEffect(WelcomeEffect.NavigateToNameInput)
+                } else {
+                    // Đã có đầy đủ thông tin -> vào thẳng Home
+                    android.util.Log.d("WelcomeViewModel", "✅ User has username '${user.username}' -> HOME")
+                    triggerEffect(WelcomeEffect.NavigateToHome)
+                }
+            } else {
+                // Fallback nếu không có userRepository
+                android.util.Log.d("WelcomeViewModel", "❌ No userRepository -> LOGIN")
                 triggerEffect(WelcomeEffect.NavigateToLogin)
             }
+            android.util.Log.d("WelcomeViewModel", "=== END CHECK AUTH ===")
         }
     }
 

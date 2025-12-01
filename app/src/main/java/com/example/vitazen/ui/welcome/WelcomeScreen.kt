@@ -38,7 +38,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun WelcomeScreen(
     viewModel: WelcomeViewModel,
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    onNavigateToHome: () -> Unit,
+    onNavigateToNameInput: () -> Unit
 ) {
     // ... (Phần lắng nghe ViewModel giữ nguyên)
     LaunchedEffect(key1 = Unit) {
@@ -46,6 +48,12 @@ fun WelcomeScreen(
             when (effect) {
                 is WelcomeEffect.NavigateToLogin -> {
                     onNavigateToLogin()
+                }
+                is WelcomeEffect.NavigateToHome -> {
+                    onNavigateToHome()
+                }
+                is WelcomeEffect.NavigateToNameInput -> {
+                    onNavigateToNameInput()
                 }
             }
         }

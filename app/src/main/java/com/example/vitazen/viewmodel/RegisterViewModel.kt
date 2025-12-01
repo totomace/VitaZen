@@ -189,12 +189,13 @@ class RegisterViewModel(
                 )?.await()
                 
                 // 3. Lưu user vào Room Database để dùng offline
+                // Lưu với username rỗng để màn hình NAME_INPUT xử lý
                 val firebaseUser = authResult.user
                 if (firebaseUser != null && userRepository != null) {
                     val user = User(
                         uid = firebaseUser.uid,
                         email = email,
-                        username = username,
+                        username = "", // Để trống, bắt buộc nhập tên ở màn hình tiếp theo
                         profilePictureUrl = firebaseUser.photoUrl?.toString(),
                         createdAt = System.currentTimeMillis(),
                         lastLoginAt = System.currentTimeMillis()
