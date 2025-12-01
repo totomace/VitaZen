@@ -65,7 +65,7 @@ fun NameInputModalScreen(
     LaunchedEffect(uiState) {
         if (uiState is NameInputUiState.Success) {
             visible = false
-            kotlinx.coroutines.delay(350)
+            // Loại bỏ delay để chuyển cảnh ngay lập tức
             onSuccess((uiState as NameInputUiState.Success).userName)
         }
     }
@@ -75,6 +75,14 @@ fun NameInputModalScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE1F5FE), // xanh nhạt phía trên
+                        Color(0xFFF0F8FF)  // trắng kem/xanh nhạt hơn phía dưới
+                    )
+                )
+            )
             .padding(16.dp)
             .imePadding(), // Đẩy khung lên khi bàn phím mở
         contentAlignment = Alignment.Center

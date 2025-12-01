@@ -1,4 +1,3 @@
-
 package com.example.vitazen.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -31,7 +30,7 @@ import com.example.vitazen.ui.login.LoginScreen
 import com.example.vitazen.ui.register.RegisterScreen
 import com.example.vitazen.ui.welcome.WelcomeScreen
 
-private const val ANIMATION_DURATION = 400
+private const val ANIMATION_DURATION = 250
 
 @Composable
 fun AppNavGraph() {
