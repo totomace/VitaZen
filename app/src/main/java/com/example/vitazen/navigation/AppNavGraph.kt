@@ -41,6 +41,7 @@ fun AppNavGraph() {
     val context = LocalContext.current
     val userRepository = remember { UserRepository(VitaZenDatabase.getInstance(context).userDao()) }
     val healthDataRepository = remember { HealthDataRepository(VitaZenDatabase.getInstance(context).healthDataDao()) }
+    val healthHistoryRepository = remember { com.example.vitazen.model.repository.HealthHistoryRepository(VitaZenDatabase.getInstance(context).healthHistoryDao()) }
 
     fun <T : ViewModel> viewModelFactory(create: () -> T) = object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
@@ -49,7 +50,7 @@ fun AppNavGraph() {
 
     val loginViewModelFactory = remember { viewModelFactory { LoginViewModel(FirebaseAuth.getInstance(), userRepository) } }
     val registerViewModelFactory = remember { viewModelFactory { RegisterViewModel(FirebaseAuth.getInstance(), userRepository) } }
-    val homeViewModelFactory = remember { viewModelFactory { com.example.vitazen.viewmodel.HomeViewModel(userRepository, healthDataRepository) } }
+    val homeViewModelFactory = remember { viewModelFactory { com.example.vitazen.viewmodel.HomeViewModel(userRepository, healthDataRepository, healthHistoryRepository) } }
     val nameInputViewModelFactory = remember { viewModelFactory { NameInputViewModel(userRepository) } }
     val welcomeViewModelFactory = remember { viewModelFactory { com.example.vitazen.viewmodel.WelcomeViewModel(userRepository, FirebaseAuth.getInstance()) } }
 
@@ -275,9 +276,15 @@ fun AppNavGraph() {
                 scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
             }
         ) {
+            val profileViewModel: com.example.vitazen.viewmodel.ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = com.example.vitazen.viewmodel.ProfileViewModel.Factory(userRepository, healthDataRepository)
+            )
             Column(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
                 androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.weight(1f)) {
-                    com.example.vitazen.ui.profile.ProfileScreen(navController = navController)
+                    com.example.vitazen.ui.profile.ProfileScreen(
+                        navController = navController,
+                        viewModel = profileViewModel
+                    )
                 }
                 com.example.vitazen.ui.home.BottomNavigationBar(selectedTab = selectedTab.value, onTabSelected = { index ->
                     selectedTab.value = index
