@@ -5,201 +5,48 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vitazen.model.repository.UserRepository
 import com.example.vitazen.model.repository.HealthDataRepository
-import com.example.vitazen.model.repository.HealthHistoryRepository
 import com.example.vitazen.model.data.HealthData
-import com.example.vitazen.model.data.HealthHistory
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.Calendar
 
 data class HealthActivity(
     val id: Int,
     val date: String,
     val type: String,
     val value: String,
-    val color: Color,
-    val icon: String // "weight", "heart", "water", "steps", "blood_pressure"
-)
-
-data class WeekData(
-    val dayLabel: String, // T2, T3, ...
-    val weight: Float?,
-    val timestamp: Long
+    val color: Color
 )
 
 data class HomeUiState(
     val userName: String = "",
     val healthActivities: List<HealthActivity> = emptyList(),
-    val healthData: HealthData? = null, // dữ liệu cá nhân
-    val weekData: List<WeekData> = emptyList() // dữ liệu tuần hiện tại
+    val healthData: HealthData? = null // dữ liệu cá nhân
 )
 
 class HomeViewModel(
     private val userRepository: UserRepository,
-    private val healthDataRepository: HealthDataRepository,
-    private val healthHistoryRepository: HealthHistoryRepository? = null
+    private val healthDataRepository: HealthDataRepository
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(HomeUiState())
+    private val _uiState = MutableStateFlow(
+        HomeUiState(
+            userName = "",
+            healthActivities = listOf(
+                HealthActivity(1, "15/06/2024", "Cân nặng", "68 kg", Color(0xFF6200EE)),
+                HealthActivity(2, "14/06/2024", "Huyết áp", "120/80 mmHg", Color(0xFF4CAF50)),
+                HealthActivity(3, "13/06/2024", "Nhịp tim", "72 bpm", Color(0xFFF44336)),
+                HealthActivity(4, "12/06/2024", "Số bước", "8,542 bước", Color(0xFF2196F3))
+            ),
+            healthData = null
+        )
+    )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
         loadUserName()
         loadHealthData()
-        generateSampleDataIfNeeded()
-        loadWeekData()
-        loadRecentActivities()
-    }
-    
-    /**
-     * Tự động tạo dữ liệu mẫu cho 2 tuần qua nếu chưa có dữ liệu
-     */
-    private fun generateSampleDataIfNeeded() {
-        viewModelScope.launch {
-            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-            if (healthHistoryRepository == null) return@launch
-            
-            // Kiểm tra xem đã có dữ liệu chưa
-            val existingData = healthHistoryRepository.getRecentHistory(uid, 1)
-            if (existingData.isNotEmpty()) return@launch // Đã có dữ liệu rồi
-            
-            // Tạo dữ liệu mẫu cho 14 ngày qua
-            val calendar = Calendar.getInstance()
-            val baseWeight = 68f // Cân nặng ban đầu
-            
-            for (i in 13 downTo 0) {
-                calendar.timeInMillis = System.currentTimeMillis()
-                calendar.add(Calendar.DAY_OF_MONTH, -i)
-                calendar.set(Calendar.HOUR_OF_DAY, 8 + (i % 12)) // Thay đổi giờ
-                calendar.set(Calendar.MINUTE, i * 4)
-                calendar.set(Calendar.SECOND, 0)
-                
-                // Tạo biến động cân nặng tự nhiên: giảm dần với dao động nhỏ
-                val dayProgress = (13 - i) / 13f
-                val trend = -1.5f * dayProgress // Giảm 1.5kg trong 2 tuần
-                val randomVariation = (kotlin.random.Random.nextFloat() - 0.5f) * 0.3f // Dao động ±0.15kg
-                val weight = baseWeight + trend + randomVariation
-                
-                val history = HealthHistory(
-                    uid = uid,
-                    weight = weight,
-                    height = 170f + (kotlin.random.Random.nextFloat() * 0.5f), // Chiều cao cố định với biến động nhỏ
-                    heartRate = 65 + kotlin.random.Random.nextInt(15), // 65-80 bpm
-                    waterIntake = 1.5f + kotlin.random.Random.nextFloat() * 1.5f, // 1.5-3L
-                    bloodPressureSystolic = 115 + kotlin.random.Random.nextInt(15), // 115-130
-                    bloodPressureDiastolic = 75 + kotlin.random.Random.nextInt(10), // 75-85
-                    steps = 6000 + kotlin.random.Random.nextInt(6000), // 6000-12000 bước
-                    timestamp = calendar.timeInMillis,
-                    notes = "Dữ liệu mẫu"
-                )
-                
-                healthHistoryRepository.insert(history)
-            }
-        }
-    }
-
-    /**
-     * Lấy hoạt động gần đây từ database
-     */
-    private fun loadRecentActivities() {
-        viewModelScope.launch {
-            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-            if (healthHistoryRepository == null) return@launch
-            
-            // Lấy 10 bản ghi gần nhất
-            val recentHistory = healthHistoryRepository.getRecentHistory(uid, 10)
-            
-            // Chuyển đổi thành HealthActivity
-            val activities = mutableListOf<HealthActivity>()
-            var activityId = 1
-            
-            recentHistory.forEach { history ->
-                val date = formatDate(history.timestamp)
-                
-                // Cân nặng
-                history.weight?.let {
-                    activities.add(
-                        HealthActivity(
-                            id = activityId++,
-                            date = date,
-                            type = "Cân nặng",
-                            value = "${String.format("%.1f", it)} kg",
-                            color = Color(0xFF6200EE),
-                            icon = "weight"
-                        )
-                    )
-                }
-                
-                // Nhịp tim
-                history.heartRate?.let {
-                    activities.add(
-                        HealthActivity(
-                            id = activityId++,
-                            date = date,
-                            type = "Nhịp tim",
-                            value = "$it bpm",
-                            color = Color(0xFFF44336),
-                            icon = "heart"
-                        )
-                    )
-                }
-                
-                // Nước uống
-                history.waterIntake?.let {
-                    activities.add(
-                        HealthActivity(
-                            id = activityId++,
-                            date = date,
-                            type = "Nước uống",
-                            value = "${String.format("%.1f", it)} lít",
-                            color = Color(0xFF2196F3),
-                            icon = "water"
-                        )
-                    )
-                }
-                
-                // Huyết áp
-                if (history.bloodPressureSystolic != null && history.bloodPressureDiastolic != null) {
-                    activities.add(
-                        HealthActivity(
-                            id = activityId++,
-                            date = date,
-                            type = "Huyết áp",
-                            value = "${history.bloodPressureSystolic}/${history.bloodPressureDiastolic} mmHg",
-                            color = Color(0xFF4CAF50),
-                            icon = "blood_pressure"
-                        )
-                    )
-                }
-                
-                // Số bước
-                history.steps?.let {
-                    activities.add(
-                        HealthActivity(
-                            id = activityId++,
-                            date = date,
-                            type = "Số bước",
-                            value = "${String.format("%,d", it)} bước",
-                            color = Color(0xFFFF9800),
-                            icon = "steps"
-                        )
-                    )
-                }
-            }
-            
-            _uiState.value = _uiState.value.copy(healthActivities = activities)
-        }
-    }
-    
-    private fun formatDate(timestamp: Long): String {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = timestamp
-        val day = calendar.get(Calendar.DAY_OF_MONTH)
-        val month = calendar.get(Calendar.MONTH) + 1
-        val year = calendar.get(Calendar.YEAR)
-        return String.format("%02d/%02d/%04d", day, month, year)
     }
 
     private fun loadUserName() {
@@ -248,103 +95,6 @@ class HomeViewModel(
             val yesterdayEnd = todayStart
             val data = healthDataRepository.getHealthDataByUidAndDate(uid, yesterdayStart, yesterdayEnd)
             onLoaded(data)
-        }
-    }
-
-    /**
-     * Lấy dữ liệu tuần hiện tại (từ Thứ 2 đến Chủ nhật)
-     */
-    private fun loadWeekData() {
-        viewModelScope.launch {
-            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-            if (healthHistoryRepository == null) return@launch
-
-            // Tính thời gian bắt đầu và kết thúc tuần hiện tại
-            val calendar = Calendar.getInstance()
-            
-            // Lùi về Thứ 2 tuần này
-            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-            val daysFromMonday = if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - Calendar.MONDAY
-            calendar.add(Calendar.DAY_OF_MONTH, -daysFromMonday)
-            calendar.set(Calendar.HOUR_OF_DAY, 0)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-            calendar.set(Calendar.MILLISECOND, 0)
-            val weekStart = calendar.timeInMillis
-
-            // Tính thời gian kết thúc tuần (Chủ nhật)
-            calendar.add(Calendar.DAY_OF_MONTH, 7)
-            val weekEnd = calendar.timeInMillis
-
-            // Lấy dữ liệu từ database
-            val historyList = healthHistoryRepository.getHistoryInRange(uid, weekStart, weekEnd)
-
-            // Tạo danh sách 7 ngày
-            val dayLabels = listOf("T2", "T3", "T4", "T5", "T6", "T7", "CN")
-            val weekDataList = mutableListOf<WeekData>()
-
-            calendar.timeInMillis = weekStart
-            for (i in 0..6) {
-                val dayStart = calendar.timeInMillis
-                calendar.add(Calendar.DAY_OF_MONTH, 1)
-                val dayEnd = calendar.timeInMillis
-
-                // Tìm dữ liệu trong ngày này
-                val dayHistory = historyList.filter { it.timestamp >= dayStart && it.timestamp < dayEnd }
-                val avgWeight = if (dayHistory.isNotEmpty()) {
-                    dayHistory.mapNotNull { it.weight }.average().toFloat()
-                } else {
-                    null
-                }
-
-                weekDataList.add(
-                    WeekData(
-                        dayLabel = dayLabels[i],
-                        weight = avgWeight,
-                        timestamp = dayStart
-                    )
-                )
-            }
-
-            _uiState.value = _uiState.value.copy(weekData = weekDataList)
-        }
-    }
-
-    /**
-     * Lưu dữ liệu sức khỏe và thêm vào lịch sử
-     */
-    fun saveHealthDataWithHistory(weight: Float, height: Float, heartRate: Int?, waterIntake: Float) {
-        viewModelScope.launch {
-            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-            
-            // Lưu vào bảng health_data (current)
-            val healthData = HealthData(
-                uid = uid,
-                weight = weight,
-                height = height,
-                heartRate = heartRate,
-                waterIntake = waterIntake,
-                lastUpdate = System.currentTimeMillis()
-            )
-            healthDataRepository.insertOrUpdateHealthData(healthData)
-            _uiState.value = _uiState.value.copy(healthData = healthData)
-
-            // Lưu vào bảng health_history (lịch sử)
-            if (healthHistoryRepository != null) {
-                val history = HealthHistory(
-                    uid = uid,
-                    weight = weight,
-                    height = height,
-                    heartRate = heartRate,
-                    waterIntake = waterIntake,
-                    timestamp = System.currentTimeMillis()
-                )
-                healthHistoryRepository.insert(history)
-                
-                // Reload dữ liệu tuần và hoạt động
-                loadWeekData()
-                loadRecentActivities()
-            }
         }
     }
 }

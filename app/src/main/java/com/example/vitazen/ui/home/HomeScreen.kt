@@ -125,7 +125,7 @@ fun HomeScreen(
                     )
                 }
                 // Biểu đồ theo dõi
-                item { ChartSection(weekData = uiState.weekData) }
+                item { ChartSection() }
                 // Hoạt động gần đây
                 item { RecentActivitiesHeader(onHistoryClick = onHistoryClick) }
                 items(uiState.healthActivities) { activity ->
@@ -145,7 +145,7 @@ fun HomeScreen(
             initialData = uiState.healthData,
             onDismiss = { showInputDialog = false },
             onSave = { w, h, hr, wi ->
-                viewModel.saveHealthDataWithHistory(w, h, hr, wi)
+                viewModel.saveHealthData(w, h, hr, wi)
                 showInputDialog = false
             },
             viewModel = viewModel // Thêm tham số viewModel ở đây
@@ -530,204 +530,116 @@ fun QuickActionButton(
 }
 
 @Composable
-fun ChartSection(weekData: List<com.example.vitazen.viewmodel.WeekData>) {
+fun ChartSection() {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Sức khỏe tuần này",
+                    text = "Biểu đồ theo dõi (7 ngày)",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF2D3748)
+                )
+
+                Text(
+                    text = "Cân nặng",
+                    fontSize = 14.sp,
+                    color = Purple500,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Biểu đồ cột chồng
-            if (weekData.any { it.weight != null }) {
-                WeekStackedBarChart(weekData = weekData)
-            } else {
-                // Hiển thị empty state
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .background(Color(0xFFF7FAFC), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ShowChart,
-                            contentDescription = "Chưa có dữ liệu",
-                            tint = Color(0xFF718096),
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Chưa có dữ liệu tuần này",
-                            color = Color(0xFF718096),
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Thêm dữ liệu để xem biểu đồ",
-                            color = Color(0xFF718096).copy(alpha = 0.7f),
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Legend - chú thích màu
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+            // Giả lập biểu đồ
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .background(Color(0xFFF7FAFC), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                ChartColorLegend("Cân nặng", Purple500)
-                ChartColorLegend("Nhịp tim", Red500)
-                ChartColorLegend("Nước", Blue500)
+                // Đây là biểu đồ giả - thực tế sẽ dùng MPAndroidChart
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ShowChart,
+                        contentDescription = "Biểu đồ",
+                        tint = Purple500,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Biểu đồ cân nặng 7 ngày",
+                        color = Color(0xFF718096),
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        text = "68kg → 67.5kg",
+                        color = Green500,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Labels ngày trong tuần
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                weekData.forEach { data ->
-                    Text(
-                        text = data.dayLabel,
-                        fontSize = 11.sp,
-                        color = if (data.weight != null) Color(0xFF2D3748) else Color(0xFF718096),
-                        fontWeight = if (data.weight != null) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
+                ChartLegend("T2", "68kg", Purple500)
+                ChartLegend("T3", "67.8kg", Purple400)
+                ChartLegend("T4", "67.7kg", Purple300)
+                ChartLegend("T5", "67.6kg", Purple200)
+                ChartLegend("T6", "67.5kg", Green500)
+                ChartLegend("T7", "67.5kg", Green500)
+                ChartLegend("CN", "67.5kg", Green500)
             }
         }
     }
 }
 
 @Composable
-fun ChartColorLegend(label: String, color: Color) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+fun ChartLegend(day: String, value: String, color: Color) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(color)
-        )
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            color = Color(0xFF718096)
-        )
-    }
-}
-
-@Composable
-fun ChartLegend(day: String, value: String, hasData: Boolean) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = day,
-            fontSize = 11.sp,
-            color = if (hasData) Color(0xFF2D3748) else Color(0xFF718096),
-            fontWeight = if (hasData) FontWeight.Bold else FontWeight.Normal
+            fontSize = 10.sp,
+            color = Color(0xFF718096)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Box(
             modifier = Modifier
                 .size(6.dp)
                 .clip(CircleShape)
-                .background(if (hasData) Purple500 else Color(0xFFE2E8F0))
+                .background(color)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = value,
-            fontSize = 9.sp,
-            color = if (hasData) Color(0xFF2D3748) else Color(0xFF718096),
-            fontWeight = if (hasData) FontWeight.Medium else FontWeight.Normal
+            fontSize = 8.sp,
+            color = Color(0xFF2D3748),
+            fontWeight = FontWeight.Medium
         )
-    }
-}
-
-@Composable
-fun WeekStackedBarChart(weekData: List<com.example.vitazen.viewmodel.WeekData>) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp)
-            .background(Color(0xFFF7FAFC), RoundedCornerShape(12.dp))
-            .padding(16.dp)
-    ) {
-        androidx.compose.foundation.Canvas(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val chartWidth = size.width
-            val chartHeight = size.height
-            val barWidth = chartWidth / 7f * 0.7f // 70% của khoảng trống
-            val spacing = chartWidth / 7f
-            
-            // Giá trị chuẩn hóa
-            val maxWeight = 100f // Tối đa 100kg
-            val maxHeartRate = 150f // Tối đa 150 bpm
-            val maxWater = 5f // Tối đa 5 lít
-            
-            weekData.forEachIndexed { index, data ->
-                val x = index * spacing + (spacing - barWidth) / 2f
-                
-                if (data.weight != null) {
-                    // Vẽ 3 cột chồng lên nhau với độ cao tương ứng
-                    var currentY = chartHeight
-                    
-                    // 1. Cân nặng (nền - màu tím)
-                    val weightHeight = (data.weight / maxWeight) * chartHeight * 0.8f
-                    drawRoundRect(
-                        color = Purple500,
-                        topLeft = androidx.compose.ui.geometry.Offset(x, currentY - weightHeight),
-                        size = androidx.compose.ui.geometry.Size(barWidth, weightHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
-                    )
-                    currentY -= weightHeight
-                    
-                    // 2. Nhịp tim (giả sử 70 bpm, có thể lấy từ data sau) - màu đỏ
-                    val heartRate = 70f + (index * 2f) // Giả lập dao động
-                    val heartHeight = (heartRate / maxHeartRate) * chartHeight * 0.3f
-                    drawRoundRect(
-                        color = Red500,
-                        topLeft = androidx.compose.ui.geometry.Offset(x, currentY - heartHeight),
-                        size = androidx.compose.ui.geometry.Size(barWidth, heartHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
-                    )
-                    currentY -= heartHeight
-                    
-                    // 3. Nước uống (giả sử 2L) - màu xanh dương
-                    val water = 2f + (index * 0.1f) // Giả lập dao động
-                    val waterHeight = (water / maxWater) * chartHeight * 0.25f
-                    drawRoundRect(
-                        color = Blue500,
-                        topLeft = androidx.compose.ui.geometry.Offset(x, currentY - waterHeight),
-                        size = androidx.compose.ui.geometry.Size(barWidth, waterHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
-                    )
-                }
-            }
-        }
     }
 }
 
