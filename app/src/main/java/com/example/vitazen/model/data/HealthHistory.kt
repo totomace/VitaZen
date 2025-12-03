@@ -14,6 +14,7 @@ data class HealthHistory(
     val height: Float? = null, // cm
     val heartRate: Int? = null, // bpm
     val waterIntake: Float? = null, // lít
+    val sleepHours: Float? = null, // giờ ngủ
     val bloodPressureSystolic: Int? = null, // mmHg
     val bloodPressureDiastolic: Int? = null, // mmHg
     val steps: Int? = null, // số bước

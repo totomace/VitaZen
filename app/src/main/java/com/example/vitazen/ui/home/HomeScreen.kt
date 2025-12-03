@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MonitorHeart
@@ -47,15 +49,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.activity.compose.BackHandler
 
-// Định nghĩa các màu sắc trong file này nếu chưa có trong theme
+// Định nghĩa các màu sắc tươi sáng, hiện đại
 val Purple200 = Color(0xFFBB86FC)
-val Purple500 = Color(0xFF6200EE)
+val Purple500 = Color(0xFF7C4DFF) // Brighter purple
 val Purple700 = Color(0xFF3700B3)
-val Green500 = Color(0xFF4CAF50)
-val Red500 = Color(0xFFF44336)
-val Blue500 = Color(0xFF2196F3)
-val Purple400 = Color(0xFFAB47BC)
+val Green500 = Color(0xFF00E676) // Bright green
+val Red500 = Color(0xFFFF5252) // Bright red
+val Blue500 = Color(0xFF448AFF) // Bright blue
+val Purple400 = Color(0xFFE040FB) // Bright purple/pink
 val Purple300 = Color(0xFFBA68C8)
+val Orange500 = Color(0xFFFF6E40) // Bright orange
+val Cyan500 = Color(0xFF18FFFF) // Bright cyan
 
 
 
@@ -70,9 +74,7 @@ fun HomeScreen(
     onNavigateToHistory: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     selectedTab: Int = 0,
-    onTabSelected: (Int) -> Unit = {},
-    // Thay đổi ở đây
-    viewModel: HomeViewModel = viewModel()
+    onTabSelected: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     
@@ -82,11 +84,14 @@ fun HomeScreen(
         (context as? androidx.activity.ComponentActivity)?.finish()
     }
     val healthDataRepository = remember { HealthDataRepository(VitaZenDatabase.getInstance(context).healthDataDao()) }
+    val healthHistoryRepository = remember { com.example.vitazen.model.repository.HealthHistoryRepository(VitaZenDatabase.getInstance(context).healthHistoryDao()) }
     val viewModel: HomeViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            @Suppress("UNCHECKED_CAST")
             return HomeViewModel(
                 com.example.vitazen.model.repository.UserRepository(VitaZenDatabase.getInstance(context).userDao()),
-                healthDataRepository
+                healthDataRepository,
+                healthHistoryRepository
             ) as T
         }
     })
@@ -125,7 +130,14 @@ fun HomeScreen(
                     )
                 }
                 // Biểu đồ theo dõi
-                item { ChartSection(weekData = uiState.weekData) }
+                item {
+                    ChartSection(
+                        weekData = uiState.weekData,
+                        onPreviousWeek = { viewModel.navigateToPreviousWeek() },
+                        onNextWeek = { viewModel.navigateToNextWeek() },
+                        canNavigateNext = uiState.canNavigateToNextWeek
+                    )
+                }
                 // Hoạt động gần đây
                 item { RecentActivitiesHeader(onHistoryClick = onHistoryClick) }
                 items(uiState.healthActivities) { activity ->
@@ -144,8 +156,8 @@ fun HomeScreen(
             show = showInputDialog,
             initialData = uiState.healthData,
             onDismiss = { showInputDialog = false },
-            onSave = { w, h, hr, wi ->
-                viewModel.saveHealthDataWithHistory(w, h, hr, wi)
+            onSave = { w, h, hr, wi, sh ->
+                viewModel.saveHealthDataWithHistory(w, h, hr, wi, sh)
                 showInputDialog = false
             },
             viewModel = viewModel // Thêm tham số viewModel ở đây
@@ -391,6 +403,13 @@ fun HealthOverviewCard(healthData: HealthData?) {
                     color = Green500,
                     modifier = Modifier.weight(1f)
                 )
+                HealthMetricItem(
+                    title = "Giờ ngủ",
+                    value = healthData?.sleepHours?.let { String.format("%.1f", it) + "h" } ?: "--",
+                    subtitle = "",
+                    color = Purple400,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -530,7 +549,12 @@ fun QuickActionButton(
 }
 
 @Composable
-fun ChartSection(weekData: List<com.example.vitazen.viewmodel.WeekData>) {
+fun ChartSection(
+    weekData: List<com.example.vitazen.viewmodel.WeekData>,
+    onPreviousWeek: () -> Unit = {},
+    onNextWeek: () -> Unit = {},
+    canNavigateNext: Boolean = false
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -543,12 +567,44 @@ fun ChartSection(weekData: List<com.example.vitazen.viewmodel.WeekData>) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(
+                    onClick = onPreviousWeek,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Purple500, CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Tuần trước",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
                 Text(
                     text = "Sức khỏe tuần này",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF2D3748)
                 )
+
+                IconButton(
+                    onClick = onNextWeek,
+                    enabled = canNavigateNext,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            if (canNavigateNext) Purple500 else Color.LightGray,
+                            CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Tuần sau",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -591,6 +647,7 @@ fun ChartSection(weekData: List<com.example.vitazen.viewmodel.WeekData>) {
             Spacer(modifier = Modifier.height(12.dp))
 
             // Legend - chú thích màu
+            Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -598,6 +655,7 @@ fun ChartSection(weekData: List<com.example.vitazen.viewmodel.WeekData>) {
                 ChartColorLegend("Cân nặng", Purple500)
                 ChartColorLegend("Nhịp tim", Red500)
                 ChartColorLegend("Nước", Blue500)
+                ChartColorLegend("Giờ ngủ", Purple400)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -668,67 +726,126 @@ fun ChartLegend(day: String, value: String, hasData: Boolean) {
 
 @Composable
 fun WeekStackedBarChart(weekData: List<com.example.vitazen.viewmodel.WeekData>) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp)
-            .background(Color(0xFFF7FAFC), RoundedCornerShape(12.dp))
-            .padding(16.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth()
     ) {
-        androidx.compose.foundation.Canvas(
-            modifier = Modifier.fillMaxSize()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(240.dp)
+                .background(Color(0xFFF7FAFC), RoundedCornerShape(12.dp))
+                .padding(16.dp)
         ) {
-            val chartWidth = size.width
-            val chartHeight = size.height
-            val barWidth = chartWidth / 7f * 0.7f // 70% của khoảng trống
-            val spacing = chartWidth / 7f
-            
-            // Giá trị chuẩn hóa
-            val maxWeight = 100f // Tối đa 100kg
-            val maxHeartRate = 150f // Tối đa 150 bpm
-            val maxWater = 5f // Tối đa 5 lít
-            
-            weekData.forEachIndexed { index, data ->
-                val x = index * spacing + (spacing - barWidth) / 2f
-                
-                if (data.weight != null) {
-                    // Vẽ 3 cột chồng lên nhau với độ cao tương ứng
-                    var currentY = chartHeight
-                    
-                    // 1. Cân nặng (nền - màu tím)
-                    val weightHeight = (data.weight / maxWeight) * chartHeight * 0.8f
-                    drawRoundRect(
-                        color = Purple500,
-                        topLeft = androidx.compose.ui.geometry.Offset(x, currentY - weightHeight),
-                        size = androidx.compose.ui.geometry.Size(barWidth, weightHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
+            androidx.compose.foundation.Canvas(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                val chartWidth = size.width
+                val chartHeight = size.height - 40.dp.toPx() // Reserve space for labels
+                val barWidth = (chartWidth / 7f) * 0.65f // 65% width for better spacing
+                val spacing = chartWidth / 7f
+
+                // Normalized values
+                val maxWeight = 100f
+                val maxHeartRate = 150f
+                val maxWater = 5f
+                val maxSleep = 12f
+
+                weekData.forEachIndexed { index, data ->
+                    val x = index * spacing + (spacing - barWidth) / 2f
+
+                    if (data.weight != null) {
+                        var currentY = chartHeight
+
+                        // Shadow effect
+                        drawRoundRect(
+                            color = Color.Black.copy(alpha = 0.05f),
+                            topLeft = androidx.compose.ui.geometry.Offset(x + 2.dp.toPx(), 4.dp.toPx()),
+                            size = androidx.compose.ui.geometry.Size(barWidth, chartHeight - 2.dp.toPx()),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx(), 8.dp.toPx())
+                        )
+
+                        // 1. Weight - Purple gradient
+                        val weightHeight = (data.weight / maxWeight) * chartHeight * 0.4f
+                        drawRoundRect(
+                            color = Purple500,
+                            topLeft = androidx.compose.ui.geometry.Offset(x, currentY - weightHeight),
+                            size = androidx.compose.ui.geometry.Size(barWidth, weightHeight),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(0f, 0f) // Straight bottom
+                        )
+                        currentY -= weightHeight
+
+                        // 2. Heart Rate - Red
+                        data.heartRate?.let { hr ->
+                            val heartHeight = (hr / maxHeartRate) * chartHeight * 0.25f
+                            drawRect(
+                                color = Red500,
+                                topLeft = androidx.compose.ui.geometry.Offset(x, currentY - heartHeight),
+                                size = androidx.compose.ui.geometry.Size(barWidth, heartHeight)
+                            )
+                            currentY -= heartHeight
+                        }
+
+                        // 3. Water - Blue
+                        data.waterIntake?.let { water ->
+                            val waterHeight = (water / maxWater) * chartHeight * 0.2f
+                            drawRect(
+                                color = Blue500,
+                                topLeft = androidx.compose.ui.geometry.Offset(x, currentY - waterHeight),
+                                size = androidx.compose.ui.geometry.Size(barWidth, waterHeight)
+                            )
+                            currentY -= waterHeight
+                        }
+
+                        // 4. Sleep - Bright purple/pink with rounded top
+                        data.sleepHours?.let { sleep ->
+                            val sleepHeight = (sleep / maxSleep) * chartHeight * 0.15f
+                            drawRoundRect(
+                                color = Purple400,
+                                topLeft = androidx.compose.ui.geometry.Offset(x, currentY - sleepHeight),
+                                size = androidx.compose.ui.geometry.Size(barWidth, sleepHeight),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx(), 8.dp.toPx())
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Day and date labels
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            weekData.forEach { data ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = data.dayLabel,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (data.weight != null) Purple500 else Color.Gray
                     )
-                    currentY -= weightHeight
-                    
-                    // 2. Nhịp tim (giả sử 70 bpm, có thể lấy từ data sau) - màu đỏ
-                    val heartRate = 70f + (index * 2f) // Giả lập dao động
-                    val heartHeight = (heartRate / maxHeartRate) * chartHeight * 0.3f
-                    drawRoundRect(
-                        color = Red500,
-                        topLeft = androidx.compose.ui.geometry.Offset(x, currentY - heartHeight),
-                        size = androidx.compose.ui.geometry.Size(barWidth, heartHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
-                    )
-                    currentY -= heartHeight
-                    
-                    // 3. Nước uống (giả sử 2L) - màu xanh dương
-                    val water = 2f + (index * 0.1f) // Giả lập dao động
-                    val waterHeight = (water / maxWater) * chartHeight * 0.25f
-                    drawRoundRect(
-                        color = Blue500,
-                        topLeft = androidx.compose.ui.geometry.Offset(x, currentY - waterHeight),
-                        size = androidx.compose.ui.geometry.Size(barWidth, waterHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
+                    Text(
+                        text = formatDateLabel(data.timestamp),
+                        fontSize = 10.sp,
+                        color = Color.Gray
                     )
                 }
             }
         }
     }
+}
+
+private fun formatDateLabel(timestamp: Long): String {
+    val calendar = java.util.Calendar.getInstance()
+    calendar.timeInMillis = timestamp
+    val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    val month = calendar.get(java.util.Calendar.MONTH) + 1
+    return String.format("%02d/%02d", day, month)
 }
 
 @Composable
@@ -824,14 +941,14 @@ fun HealthDataInputDialog(
     show: Boolean,
     initialData: HealthData?,
     onDismiss: () -> Unit,
-    onSave: (Float, Float, Int?, Float) -> Unit,
+    onSave: (Float, Float, Int?, Float, Float) -> Unit,
     viewModel: HomeViewModel
 ) {
     var weight by remember { mutableStateOf(initialData?.weight?.toString() ?: "") }
     var height by remember { mutableStateOf(initialData?.height?.toString() ?: "") }
     var heartRate by remember { mutableStateOf(initialData?.heartRate?.toString() ?: "") }
     var waterIntake by remember { mutableStateOf(initialData?.waterIntake?.toString() ?: "") }
-    var yesterdayData by remember { mutableStateOf<HealthData?>(null) }
+    var sleepHours by remember { mutableStateOf(initialData?.sleepHours?.toString() ?: "") }
 
     if (show) {
         AlertDialog(
@@ -935,37 +1052,38 @@ fun HealthDataInputDialog(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                        Button(
-                            onClick = {
-                                viewModel.loadYesterdayHealthData { data ->
-                                    yesterdayData = data
-                                    if (data != null) {
-                                        weight = data.weight.toString()
-                                        height = data.height.toString()
-                                        heartRate = data.heartRate?.toString() ?: ""
-                                        waterIntake = data.waterIntake.toString()
-                                    }
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB2B2B2)),
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        ) {
-                            Text("Lấy dữ liệu hôm qua", color = Color.White, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                        }
-                    }
+                    OutlinedTextField(
+                        value = sleepHours,
+                        onValueChange = { sleepHours = it },
+                        textStyle = LocalTextStyle.current.copy(color = Color.Black),
+                        label = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    painter = rememberVectorPainter(Icons.Default.Favorite),
+                                    contentDescription = null,
+                                    tint = Color(0xFF9C27B0),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Thời gian ngủ (giờ)", color = Color(0xFF9C27B0))
+                            }
+                        },
+                        placeholder = { Text("Nhập số giờ ngủ...", color = Color.Gray) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        val w = weight.toFloatOrNull() ?: yesterdayData?.weight ?: 0f
-                        val h = height.toFloatOrNull() ?: yesterdayData?.height ?: 0f
-                        val hr = if (heartRate.isNotBlank()) heartRate.toIntOrNull() else yesterdayData?.heartRate
-                        val wi = waterIntake.toFloatOrNull() ?: yesterdayData?.waterIntake ?: 0f
-                        onSave(w, h, hr, wi)
+                        val w = weight.toFloatOrNull() ?: 0f
+                        val h = height.toFloatOrNull() ?: 0f
+                        val hr = if (heartRate.isNotBlank()) heartRate.toIntOrNull() else null
+                        val wi = waterIntake.toFloatOrNull() ?: 0f
+                        val sh = sleepHours.toFloatOrNull() ?: 0f
+                        onSave(w, h, hr, wi, sh)
                         onDismiss()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),

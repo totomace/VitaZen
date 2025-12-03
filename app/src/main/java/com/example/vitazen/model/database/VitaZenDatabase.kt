@@ -16,7 +16,7 @@ import com.example.vitazen.model.data.HealthHistory
  */
 @Database(
     entities = [User::class, History::class, Reminder::class, HealthData::class, HealthHistory::class],
-    version = 3, // tăng version để Room cập nhật table mới
+    version = 4, // tăng version để Room cập nhật table mới
     exportSchema = false
 )
 abstract class VitaZenDatabase : RoomDatabase() {

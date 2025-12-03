@@ -10,6 +10,7 @@ data class HealthData(
     val height: Float = 0f, // cm
     val heartRate: Int? = null, // bpm
     val waterIntake: Float = 0f, // lít
+    val sleepHours: Float = 0f, // giờ ngủ
     val lastUpdate: Long = System.currentTimeMillis()
 )
 

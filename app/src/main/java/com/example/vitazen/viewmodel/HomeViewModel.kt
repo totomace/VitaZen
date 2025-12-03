@@ -27,6 +27,9 @@ data class HealthActivity(
 data class WeekData(
     val dayLabel: String, // T2, T3, ...
     val weight: Float?,
+    val heartRate: Int?,
+    val waterIntake: Float?,
+    val sleepHours: Float?,
     val timestamp: Long
 )
 
@@ -34,7 +37,9 @@ data class HomeUiState(
     val userName: String = "",
     val healthActivities: List<HealthActivity> = emptyList(),
     val healthData: HealthData? = null, // dữ liệu cá nhân
-    val weekData: List<WeekData> = emptyList() // dữ liệu tuần hiện tại
+    val weekData: List<WeekData> = emptyList(), // dữ liệu tuần hiện tại
+    val currentWeekOffset: Int = 0, // 0 = tuần hiện tại, -1 = tuần trước
+    val canNavigateToNextWeek: Boolean = false // không thể xem tuần tương lai
 )
 
 class HomeViewModel(
@@ -48,6 +53,7 @@ class HomeViewModel(
     init {
         loadUserName()
         loadHealthData()
+        checkAndResetForNewDay()
         generateSampleDataIfNeeded()
         loadWeekData()
         loadRecentActivities()
@@ -88,6 +94,7 @@ class HomeViewModel(
                     height = 170f + (kotlin.random.Random.nextFloat() * 0.5f), // Chiều cao cố định với biến động nhỏ
                     heartRate = 65 + kotlin.random.Random.nextInt(15), // 65-80 bpm
                     waterIntake = 1.5f + kotlin.random.Random.nextFloat() * 1.5f, // 1.5-3L
+                    sleepHours = 6f + kotlin.random.Random.nextFloat() * 3f, // 6-9 giờ
                     bloodPressureSystolic = 115 + kotlin.random.Random.nextInt(15), // 115-130
                     bloodPressureDiastolic = 75 + kotlin.random.Random.nextInt(10), // 75-85
                     steps = 6000 + kotlin.random.Random.nextInt(6000), // 6000-12000 bước
@@ -160,6 +167,20 @@ class HomeViewModel(
                     )
                 }
                 
+                // Thời gian ngủ
+                history.sleepHours?.let {
+                    activities.add(
+                        HealthActivity(
+                            id = activityId++,
+                            date = date,
+                            type = "Thời gian ngủ",
+                            value = "${String.format("%.1f", it)} giờ",
+                            color = Color(0xFF9C27B0),
+                            icon = "sleep"
+                        )
+                    )
+                }
+
                 // Huyết áp
                 if (history.bloodPressureSystolic != null && history.bloodPressureDiastolic != null) {
                     activities.add(
@@ -222,7 +243,7 @@ class HomeViewModel(
         }
     }
 
-    fun saveHealthData(weight: Float, height: Float, heartRate: Int?, waterIntake: Float) {
+    fun saveHealthData(weight: Float, height: Float, heartRate: Int?, waterIntake: Float, sleepHours: Float) {
         viewModelScope.launch {
             val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
             val healthData = HealthData(
@@ -231,6 +252,7 @@ class HomeViewModel(
                 height = height,
                 heartRate = heartRate,
                 waterIntake = waterIntake,
+                sleepHours = sleepHours,
                 lastUpdate = System.currentTimeMillis()
             )
             healthDataRepository.insertOrUpdateHealthData(healthData)
@@ -238,31 +260,83 @@ class HomeViewModel(
         }
     }
 
-    fun loadYesterdayHealthData(onLoaded: (HealthData?) -> Unit) {
+    /**
+     * Lấy dữ liệu sức khỏe của ngày hôm nay
+     * Ngày mới bắt đầu từ 00:00
+     */
+    fun getTodayHealthData(): HealthData? {
+        return _uiState.value.healthData
+    }
+
+    /**
+     * Kiểm tra xem có phải ngày mới không (sau 00:00)
+     * Nếu là ngày mới, reset dữ liệu hiện tại
+     */
+    private fun checkAndResetForNewDay() {
         viewModelScope.launch {
             val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-            val now = System.currentTimeMillis()
-            val millisInDay = 24 * 60 * 60 * 1000
-            val todayStart = now - (now % millisInDay)
-            val yesterdayStart = todayStart - millisInDay
-            val yesterdayEnd = todayStart
-            val data = healthDataRepository.getHealthDataByUidAndDate(uid, yesterdayStart, yesterdayEnd)
-            onLoaded(data)
+            val currentData = healthDataRepository.getHealthDataByUid(uid)
+
+            if (currentData != null) {
+                val calendar = Calendar.getInstance()
+                val todayStart = calendar.apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+
+                // Nếu dữ liệu thuộc ngày hôm qua, reset về giá trị mặc định
+                if (currentData.lastUpdate < todayStart) {
+                    val newData = HealthData(
+                        uid = uid,
+                        weight = 0f,
+                        height = currentData.height, // Giữ chiều cao
+                        heartRate = null,
+                        waterIntake = 0f,
+                        sleepHours = 0f,
+                        lastUpdate = System.currentTimeMillis()
+                    )
+                    healthDataRepository.insertOrUpdateHealthData(newData)
+                    _uiState.value = _uiState.value.copy(healthData = newData)
+                }
+            }
         }
     }
 
     /**
-     * Lấy dữ liệu tuần hiện tại (từ Thứ 2 đến Chủ nhật)
+     * Navigate to previous week
      */
-    private fun loadWeekData() {
+    fun navigateToPreviousWeek() {
+        val newOffset = _uiState.value.currentWeekOffset - 1
+        loadWeekData(newOffset)
+    }
+
+    /**
+     * Navigate to next week
+     */
+    fun navigateToNextWeek() {
+        val newOffset = _uiState.value.currentWeekOffset + 1
+        if (newOffset <= 0) { // Can't view future weeks
+            loadWeekData(newOffset)
+        }
+    }
+
+    /**
+     * Lấy dữ liệu tuần (từ Thứ 2 đến Chủ nhật)
+     */
+    private fun loadWeekData(weekOffset: Int = 0) {
         viewModelScope.launch {
             val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
             if (healthHistoryRepository == null) return@launch
 
-            // Tính thời gian bắt đầu và kết thúc tuần hiện tại
+            // Tính thời gian bắt đầu và kết thúc tuần
             val calendar = Calendar.getInstance()
             
-            // Lùi về Thứ 2 tuần này
+            // Di chuyển đến tuần mong muốn
+            calendar.add(Calendar.WEEK_OF_YEAR, weekOffset)
+
+            // Lùi về Thứ 2 tuần đó
             val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             val daysFromMonday = if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - Calendar.MONDAY
             calendar.add(Calendar.DAY_OF_MONTH, -daysFromMonday)
@@ -272,8 +346,11 @@ class HomeViewModel(
             calendar.set(Calendar.MILLISECOND, 0)
             val weekStart = calendar.timeInMillis
 
-            // Tính thời gian kết thúc tuần (Chủ nhật)
-            calendar.add(Calendar.DAY_OF_MONTH, 7)
+            // Tính thời gian kết thúc tuần (Chủ nhật 23:59:59)
+            calendar.add(Calendar.DAY_OF_MONTH, 6)
+            calendar.set(Calendar.HOUR_OF_DAY, 23)
+            calendar.set(Calendar.MINUTE, 59)
+            calendar.set(Calendar.SECOND, 59)
             val weekEnd = calendar.timeInMillis
 
             // Lấy dữ liệu từ database
@@ -291,29 +368,51 @@ class HomeViewModel(
 
                 // Tìm dữ liệu trong ngày này
                 val dayHistory = historyList.filter { it.timestamp >= dayStart && it.timestamp < dayEnd }
+
+                // Tính trung bình các giá trị
                 val avgWeight = if (dayHistory.isNotEmpty()) {
                     dayHistory.mapNotNull { it.weight }.average().toFloat()
-                } else {
-                    null
-                }
+                } else null
+
+                val avgHeartRate = if (dayHistory.isNotEmpty()) {
+                    dayHistory.mapNotNull { it.heartRate }.average().toInt()
+                } else null
+
+                val avgWaterIntake = if (dayHistory.isNotEmpty()) {
+                    dayHistory.mapNotNull { it.waterIntake }.average().toFloat()
+                } else null
+
+                val avgSleepHours = if (dayHistory.isNotEmpty()) {
+                    dayHistory.mapNotNull { it.sleepHours }.average().toFloat()
+                } else null
 
                 weekDataList.add(
                     WeekData(
                         dayLabel = dayLabels[i],
                         weight = avgWeight,
+                        heartRate = avgHeartRate,
+                        waterIntake = avgWaterIntake,
+                        sleepHours = avgSleepHours,
                         timestamp = dayStart
                     )
                 )
             }
 
-            _uiState.value = _uiState.value.copy(weekData = weekDataList)
+            // Kiểm tra có thể chuyển tuần sau không
+            val canNavigateNext = weekOffset < 0
+
+            _uiState.value = _uiState.value.copy(
+                weekData = weekDataList,
+                currentWeekOffset = weekOffset,
+                canNavigateToNextWeek = canNavigateNext
+            )
         }
     }
 
     /**
      * Lưu dữ liệu sức khỏe và thêm vào lịch sử
      */
-    fun saveHealthDataWithHistory(weight: Float, height: Float, heartRate: Int?, waterIntake: Float) {
+    fun saveHealthDataWithHistory(weight: Float, height: Float, heartRate: Int?, waterIntake: Float, sleepHours: Float) {
         viewModelScope.launch {
             val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
             
@@ -324,6 +423,7 @@ class HomeViewModel(
                 height = height,
                 heartRate = heartRate,
                 waterIntake = waterIntake,
+                sleepHours = sleepHours,
                 lastUpdate = System.currentTimeMillis()
             )
             healthDataRepository.insertOrUpdateHealthData(healthData)
@@ -337,6 +437,7 @@ class HomeViewModel(
                     height = height,
                     heartRate = heartRate,
                     waterIntake = waterIntake,
+                    sleepHours = sleepHours,
                     timestamp = System.currentTimeMillis()
                 )
                 healthHistoryRepository.insert(history)

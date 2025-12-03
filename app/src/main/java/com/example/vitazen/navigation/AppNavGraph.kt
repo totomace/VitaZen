@@ -180,9 +180,7 @@ fun AppNavGraph() {
                 scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
             }
         ) {
-            val homeViewModel: com.example.vitazen.viewmodel.HomeViewModel = viewModel(factory = homeViewModelFactory)
             HomeScreen(
-                viewModel = homeViewModel,
                 selectedTab = selectedTab.value,
                 onTabSelected = { index ->
                     selectedTab.value = index
@@ -276,14 +274,10 @@ fun AppNavGraph() {
                 scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
             }
         ) {
-            val profileViewModel: com.example.vitazen.viewmodel.ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
-                factory = com.example.vitazen.viewmodel.ProfileViewModel.Factory(userRepository, healthDataRepository)
-            )
             Column(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
                 androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.weight(1f)) {
-                    com.example.vitazen.ui.profile.ProfileScreen(
-                        navController = navController,
-                        viewModel = profileViewModel
+                    com.example.vitazen.ui.settings.SettingsScreen(
+                        onBackClick = { /* Do nothing, use bottom nav instead */ }
                     )
                 }
                 com.example.vitazen.ui.home.BottomNavigationBar(selectedTab = selectedTab.value, onTabSelected = { index ->
