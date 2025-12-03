@@ -39,7 +39,8 @@ data class HomeUiState(
     val healthData: HealthData? = null, // dữ liệu cá nhân
     val weekData: List<WeekData> = emptyList(), // dữ liệu tuần hiện tại
     val currentWeekOffset: Int = 0, // 0 = tuần hiện tại, -1 = tuần trước
-    val canNavigateToNextWeek: Boolean = false // không thể xem tuần tương lai
+    val canNavigateToNextWeek: Boolean = false, // không thể xem tuần tương lai
+    val isCurrentWeek: Boolean = true // đang ở tuần hiện tại
 )
 
 class HomeViewModel(
@@ -210,7 +211,9 @@ class HomeViewModel(
                 }
             }
             
-            _uiState.value = _uiState.value.copy(healthActivities = activities)
+            // Giới hạn chỉ hiển thị 5 hoạt động gần đây nhất để tránh lag
+            val recentActivities = activities.take(5)
+            _uiState.value = _uiState.value.copy(healthActivities = recentActivities)
         }
     }
     
@@ -322,6 +325,10 @@ class HomeViewModel(
         }
     }
 
+    fun navigateToCurrentWeek() {
+        loadWeekData(0)
+    }
+
     /**
      * Lấy dữ liệu tuần (từ Thứ 2 đến Chủ nhật)
      */
@@ -400,11 +407,13 @@ class HomeViewModel(
 
             // Kiểm tra có thể chuyển tuần sau không
             val canNavigateNext = weekOffset < 0
+            val isCurrentWeek = weekOffset == 0
 
             _uiState.value = _uiState.value.copy(
                 weekData = weekDataList,
                 currentWeekOffset = weekOffset,
-                canNavigateToNextWeek = canNavigateNext
+                canNavigateToNextWeek = canNavigateNext,
+                isCurrentWeek = isCurrentWeek
             )
         }
     }

@@ -135,7 +135,9 @@ fun HomeScreen(
                         weekData = uiState.weekData,
                         onPreviousWeek = { viewModel.navigateToPreviousWeek() },
                         onNextWeek = { viewModel.navigateToNextWeek() },
-                        canNavigateNext = uiState.canNavigateToNextWeek
+                        onCurrentWeek = { viewModel.navigateToCurrentWeek() },
+                        canNavigateNext = uiState.canNavigateToNextWeek,
+                        isCurrentWeek = uiState.isCurrentWeek
                     )
                 }
                 // Hoạt động gần đây
@@ -553,8 +555,28 @@ fun ChartSection(
     weekData: List<com.example.vitazen.viewmodel.WeekData>,
     onPreviousWeek: () -> Unit = {},
     onNextWeek: () -> Unit = {},
-    canNavigateNext: Boolean = false
+    onCurrentWeek: () -> Unit = {},
+    canNavigateNext: Boolean = false,
+    isCurrentWeek: Boolean = true
 ) {
+    // Tính toán thông tin tuần
+    val calendar = java.util.Calendar.getInstance()
+    if (weekData.isNotEmpty()) {
+        calendar.timeInMillis = weekData[0].timestamp
+    }
+    val weekNumber = calendar.get(java.util.Calendar.WEEK_OF_YEAR)
+    val year = calendar.get(java.util.Calendar.YEAR)
+    
+    // Tính ngày đầu tuần (Thứ 2) và cuối tuần (Chủ nhật)
+    calendar.firstDayOfWeek = java.util.Calendar.MONDAY
+    calendar.set(java.util.Calendar.DAY_OF_WEEK, java.util.Calendar.MONDAY)
+    val startDay = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    val startMonth = calendar.get(java.util.Calendar.MONTH) + 1
+    
+    calendar.set(java.util.Calendar.DAY_OF_WEEK, java.util.Calendar.SUNDAY)
+    val endDay = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    val endMonth = calendar.get(java.util.Calendar.MONTH) + 1
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -562,6 +584,7 @@ fun ChartSection(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
+            // Header với nút điều hướng
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -571,7 +594,7 @@ fun ChartSection(
                     onClick = onPreviousWeek,
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Purple500, CircleShape)
+                        .background(Color(0xFF3498DB), CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -581,12 +604,23 @@ fun ChartSection(
                     )
                 }
 
-                Text(
-                    text = "Sức khỏe tuần này",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2D3748)
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Tuần $weekNumber, $year",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2D3748)
+                    )
+                    Text(
+                        text = "$startDay/$startMonth - $endDay/$endMonth",
+                        fontSize = 13.sp,
+                        color = Color(0xFF718096),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
                 IconButton(
                     onClick = onNextWeek,
@@ -594,30 +628,59 @@ fun ChartSection(
                     modifier = Modifier
                         .size(40.dp)
                         .background(
-                            if (canNavigateNext) Purple500 else Color.LightGray,
+                            if (canNavigateNext) Color(0xFF3498DB) else Color(0xFFE2E8F0),
                             CircleShape
                         )
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Tuần sau",
-                        tint = Color.White,
+                        tint = if (canNavigateNext) Color.White else Color(0xFFCBD5E0),
                         modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // Nút "Tuần hiện tại" (chỉ hiển thị khi không phải tuần hiện tại)
+            if (!isCurrentWeek) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onCurrentWeek,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(36.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF27AE60)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Home,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Tuần hiện tại",
+                        fontSize = 13.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Biểu đồ cột chồng
+            // Biểu đồ kết hợp (Combo Chart)
             if (weekData.any { it.weight != null }) {
-                WeekStackedBarChart(weekData = weekData)
+                ComboChart(weekData = weekData)
             } else {
                 // Hiển thị empty state
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(280.dp)
                         .background(Color(0xFFF7FAFC), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -646,33 +709,14 @@ fun ChartSection(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Legend - chú thích màu
-            Spacer(modifier = Modifier.height(16.dp))
+            // Legend - chú thích
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                ChartColorLegend("Cân nặng", Purple500)
-                ChartColorLegend("Nhịp tim", Red500)
-                ChartColorLegend("Nước", Blue500)
-                ChartColorLegend("Giờ ngủ", Purple400)
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Labels ngày trong tuần
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                weekData.forEach { data ->
-                    Text(
-                        text = data.dayLabel,
-                        fontSize = 11.sp,
-                        color = if (data.weight != null) Color(0xFF2D3748) else Color(0xFF718096),
-                        fontWeight = if (data.weight != null) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
+                ChartColorLegend("Cân nặng (kg)", Color(0xFF2D3E50))
+                ChartColorLegend("Nước (L)", Color(0xFF3498DB))
+                ChartColorLegend("Ngủ (giờ)", Color(0xFF27AE60))
             }
         }
     }
@@ -722,130 +766,6 @@ fun ChartLegend(day: String, value: String, hasData: Boolean) {
             fontWeight = if (hasData) FontWeight.Medium else FontWeight.Normal
         )
     }
-}
-
-@Composable
-fun WeekStackedBarChart(weekData: List<com.example.vitazen.viewmodel.WeekData>) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(240.dp)
-                .background(Color(0xFFF7FAFC), RoundedCornerShape(12.dp))
-                .padding(16.dp)
-        ) {
-            androidx.compose.foundation.Canvas(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                val chartWidth = size.width
-                val chartHeight = size.height - 40.dp.toPx() // Reserve space for labels
-                val barWidth = (chartWidth / 7f) * 0.65f // 65% width for better spacing
-                val spacing = chartWidth / 7f
-
-                // Normalized values
-                val maxWeight = 100f
-                val maxHeartRate = 150f
-                val maxWater = 5f
-                val maxSleep = 12f
-
-                weekData.forEachIndexed { index, data ->
-                    val x = index * spacing + (spacing - barWidth) / 2f
-
-                    if (data.weight != null) {
-                        var currentY = chartHeight
-
-                        // Shadow effect
-                        drawRoundRect(
-                            color = Color.Black.copy(alpha = 0.05f),
-                            topLeft = androidx.compose.ui.geometry.Offset(x + 2.dp.toPx(), 4.dp.toPx()),
-                            size = androidx.compose.ui.geometry.Size(barWidth, chartHeight - 2.dp.toPx()),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx(), 8.dp.toPx())
-                        )
-
-                        // 1. Weight - Purple gradient
-                        val weightHeight = (data.weight / maxWeight) * chartHeight * 0.4f
-                        drawRoundRect(
-                            color = Purple500,
-                            topLeft = androidx.compose.ui.geometry.Offset(x, currentY - weightHeight),
-                            size = androidx.compose.ui.geometry.Size(barWidth, weightHeight),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(0f, 0f) // Straight bottom
-                        )
-                        currentY -= weightHeight
-
-                        // 2. Heart Rate - Red
-                        data.heartRate?.let { hr ->
-                            val heartHeight = (hr / maxHeartRate) * chartHeight * 0.25f
-                            drawRect(
-                                color = Red500,
-                                topLeft = androidx.compose.ui.geometry.Offset(x, currentY - heartHeight),
-                                size = androidx.compose.ui.geometry.Size(barWidth, heartHeight)
-                            )
-                            currentY -= heartHeight
-                        }
-
-                        // 3. Water - Blue
-                        data.waterIntake?.let { water ->
-                            val waterHeight = (water / maxWater) * chartHeight * 0.2f
-                            drawRect(
-                                color = Blue500,
-                                topLeft = androidx.compose.ui.geometry.Offset(x, currentY - waterHeight),
-                                size = androidx.compose.ui.geometry.Size(barWidth, waterHeight)
-                            )
-                            currentY -= waterHeight
-                        }
-
-                        // 4. Sleep - Bright purple/pink with rounded top
-                        data.sleepHours?.let { sleep ->
-                            val sleepHeight = (sleep / maxSleep) * chartHeight * 0.15f
-                            drawRoundRect(
-                                color = Purple400,
-                                topLeft = androidx.compose.ui.geometry.Offset(x, currentY - sleepHeight),
-                                size = androidx.compose.ui.geometry.Size(barWidth, sleepHeight),
-                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx(), 8.dp.toPx())
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Day and date labels
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            weekData.forEach { data ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = data.dayLabel,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (data.weight != null) Purple500 else Color.Gray
-                    )
-                    Text(
-                        text = formatDateLabel(data.timestamp),
-                        fontSize = 10.sp,
-                        color = Color.Gray
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun formatDateLabel(timestamp: Long): String {
-    val calendar = java.util.Calendar.getInstance()
-    calendar.timeInMillis = timestamp
-    val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
-    val month = calendar.get(java.util.Calendar.MONTH) + 1
-    return String.format("%02d/%02d", day, month)
 }
 
 @Composable
