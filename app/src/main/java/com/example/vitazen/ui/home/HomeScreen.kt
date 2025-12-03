@@ -175,7 +175,7 @@ fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
     Surface(
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = RoundedCornerShape(0.dp),
         color = backgroundColor,
         modifier = Modifier
     ) {
@@ -183,7 +183,6 @@ fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White)
-                // Xóa .shadow để không đổ bóng
                 .padding(horizontal = 12.dp, vertical = 6.dp)
                 .navigationBarsPadding(),
             horizontalArrangement = Arrangement.SpaceEvenly,
