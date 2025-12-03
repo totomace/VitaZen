@@ -10,4 +10,5 @@ class HealthDataRepository(private val healthDataDao: HealthDataDao) {
     fun getHealthDataByUidFlow(uid: String): Flow<HealthData?> = healthDataDao.getHealthDataByUidFlow(uid)
     suspend fun updateHealthData(data: HealthData) = healthDataDao.updateHealthData(data)
     suspend fun getHealthDataByUidAndDate(uid: String, start: Long, end: Long): HealthData? = healthDataDao.getHealthDataByUidAndDate(uid, start, end)
+    suspend fun deleteHealthData(uid: String) = healthDataDao.deleteHealthData(uid)
 }

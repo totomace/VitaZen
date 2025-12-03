@@ -26,4 +26,8 @@ class HealthHistoryRepository(private val healthHistoryDao: HealthHistoryDao) {
     suspend fun deleteOldHistory(uid: String, timestamp: Long) {
         healthHistoryDao.deleteOldHistory(uid, timestamp)
     }
+    
+    suspend fun deleteAllHistory(uid: String) {
+        healthHistoryDao.deleteAllHistory(uid)
+    }
 }

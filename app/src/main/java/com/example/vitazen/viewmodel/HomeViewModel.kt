@@ -55,57 +55,8 @@ class HomeViewModel(
         loadUserName()
         loadHealthData()
         checkAndResetForNewDay()
-        generateSampleDataIfNeeded()
         loadWeekData()
         loadRecentActivities()
-    }
-    
-    /**
-     * Tự động tạo dữ liệu mẫu cho 2 tuần qua nếu chưa có dữ liệu
-     */
-    private fun generateSampleDataIfNeeded() {
-        viewModelScope.launch {
-            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-            if (healthHistoryRepository == null) return@launch
-            
-            // Kiểm tra xem đã có dữ liệu chưa
-            val existingData = healthHistoryRepository.getRecentHistory(uid, 1)
-            if (existingData.isNotEmpty()) return@launch // Đã có dữ liệu rồi
-            
-            // Tạo dữ liệu mẫu cho 14 ngày qua
-            val calendar = Calendar.getInstance()
-            val baseWeight = 68f // Cân nặng ban đầu
-            
-            for (i in 13 downTo 0) {
-                calendar.timeInMillis = System.currentTimeMillis()
-                calendar.add(Calendar.DAY_OF_MONTH, -i)
-                calendar.set(Calendar.HOUR_OF_DAY, 8 + (i % 12)) // Thay đổi giờ
-                calendar.set(Calendar.MINUTE, i * 4)
-                calendar.set(Calendar.SECOND, 0)
-                
-                // Tạo biến động cân nặng tự nhiên: giảm dần với dao động nhỏ
-                val dayProgress = (13 - i) / 13f
-                val trend = -1.5f * dayProgress // Giảm 1.5kg trong 2 tuần
-                val randomVariation = (kotlin.random.Random.nextFloat() - 0.5f) * 0.3f // Dao động ±0.15kg
-                val weight = baseWeight + trend + randomVariation
-                
-                val history = HealthHistory(
-                    uid = uid,
-                    weight = weight,
-                    height = 170f + (kotlin.random.Random.nextFloat() * 0.5f), // Chiều cao cố định với biến động nhỏ
-                    heartRate = 65 + kotlin.random.Random.nextInt(15), // 65-80 bpm
-                    waterIntake = 1.5f + kotlin.random.Random.nextFloat() * 1.5f, // 1.5-3L
-                    sleepHours = 6f + kotlin.random.Random.nextFloat() * 3f, // 6-9 giờ
-                    bloodPressureSystolic = 115 + kotlin.random.Random.nextInt(15), // 115-130
-                    bloodPressureDiastolic = 75 + kotlin.random.Random.nextInt(10), // 75-85
-                    steps = 6000 + kotlin.random.Random.nextInt(6000), // 6000-12000 bước
-                    timestamp = calendar.timeInMillis,
-                    notes = "Dữ liệu mẫu"
-                )
-                
-                healthHistoryRepository.insert(history)
-            }
-        }
     }
 
     /**

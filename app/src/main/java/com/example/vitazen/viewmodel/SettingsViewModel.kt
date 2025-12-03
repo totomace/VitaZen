@@ -24,7 +24,9 @@ data class SettingsUiState(
 
 class SettingsViewModel(
     private val userRepository: UserRepository,
-    private val context: Context
+    private val context: Context,
+    private val healthHistoryRepository: com.example.vitazen.model.repository.HealthHistoryRepository? = null,
+    private val healthDataRepository: com.example.vitazen.model.repository.HealthDataRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -144,11 +146,21 @@ class SettingsViewModel(
         }
     }
 
-    fun deleteOldData() {
+    fun deleteAllData() {
         viewModelScope.launch {
             try {
-                // TODO: Delete data older than 90 days from database
-                Toast.makeText(context, "Chức năng xóa dữ liệu cũ đang được phát triển", Toast.LENGTH_SHORT).show()
+                val uid = FirebaseAuth.getInstance().currentUser?.uid
+                if (uid != null) {
+                    // Xóa toàn bộ lịch sử
+                    healthHistoryRepository?.deleteAllHistory(uid)
+                    
+                    // Xóa dữ liệu hiện tại
+                    healthDataRepository?.deleteHealthData(uid)
+                    
+                    Toast.makeText(context, "Đã xóa toàn bộ dữ liệu sức khỏe", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Không tìm thấy thông tin người dùng", Toast.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
                 Toast.makeText(context, "Lỗi khi xóa dữ liệu: ${e.message}", Toast.LENGTH_SHORT).show()
             }

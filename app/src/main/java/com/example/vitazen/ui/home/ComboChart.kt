@@ -154,49 +154,7 @@ fun ComboChart(weekData: List<com.example.vitazen.viewmodel.WeekData>) {
                 }
             }
 
-            // Vẽ nhãn trục Y bên trái (Cân nặng)
-            Column(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .offset(x = (-4).dp),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "80",
-                    fontSize = 9.sp,
-                    color = Color(0xFF2D3E50),
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(180.dp))
-                Text(
-                    text = "50",
-                    fontSize = 9.sp,
-                    color = Color(0xFF2D3E50),
-                    fontWeight = FontWeight.Bold
-                )
-            }
 
-            // Vẽ nhãn trục Y bên phải (Nước/Ngủ)
-            Column(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 4.dp),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "10h",
-                    fontSize = 9.sp,
-                    color = Color(0xFF27AE60),
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(180.dp))
-                Text(
-                    text = "4L",
-                    fontSize = 9.sp,
-                    color = Color(0xFF3498DB),
-                    fontWeight = FontWeight.Bold
-                )
-            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))

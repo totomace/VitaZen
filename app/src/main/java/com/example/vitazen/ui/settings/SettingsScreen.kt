@@ -45,10 +45,12 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val userRepository = remember { UserRepository(VitaZenDatabase.getInstance(context).userDao()) }
+    val healthHistoryRepository = remember { com.example.vitazen.model.repository.HealthHistoryRepository(VitaZenDatabase.getInstance(context).healthHistoryDao()) }
+    val healthDataRepository = remember { com.example.vitazen.model.repository.HealthDataRepository(VitaZenDatabase.getInstance(context).healthDataDao()) }
     val viewModel: SettingsViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
             @Suppress("UNCHECKED_CAST")
-            return SettingsViewModel(userRepository, context) as T
+            return SettingsViewModel(userRepository, context, healthHistoryRepository, healthDataRepository) as T
         }
     })
 
@@ -353,7 +355,7 @@ fun SettingsScreen(
                         modifier = Modifier.size(28.dp)
                     )
                     Text(
-                        "Xóa dữ liệu cũ",
+                        "Xóa toàn bộ dữ liệu",
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
                     )
@@ -364,7 +366,7 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        "Bạn có chắc chắn muốn xóa tất cả dữ liệu quá 90 ngày?",
+                        "Bạn có chắc chắn muốn xóa toàn bộ dữ liệu sức khỏe?",
                         fontSize = 16.sp,
                         color = Color(0xFF2D3748)
                     )
@@ -397,9 +399,8 @@ fun SettingsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.deleteOldData()
+                        viewModel.deleteAllData()
                         showDeleteDataDialog = false
-                        Toast.makeText(context, "Đã xóa dữ liệu cũ", Toast.LENGTH_SHORT).show()
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFF5252)
@@ -519,8 +520,8 @@ fun SettingsScreen(
 
             item {
                 SettingsClickableCard(
-                    title = "Xóa dữ liệu cũ",
-                    subtitle = "Xóa dữ liệu quá 90 ngày",
+                    title = "Xóa toàn bộ dữ liệu",
+                    subtitle = "Xóa tất cả dữ liệu sức khỏe",
                     icon = Icons.Default.Delete,
                     color = Color(0xFFFF5252),
                     onClick = { showDeleteDataDialog = true }

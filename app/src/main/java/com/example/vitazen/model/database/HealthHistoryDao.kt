@@ -40,4 +40,10 @@ interface HealthHistoryDao {
      */
     @Query("DELETE FROM health_history WHERE uid = :uid AND timestamp < :timestamp")
     suspend fun deleteOldHistory(uid: String, timestamp: Long)
+    
+    /**
+     * Xóa toàn bộ lịch sử của user
+     */
+    @Query("DELETE FROM health_history WHERE uid = :uid")
+    suspend fun deleteAllHistory(uid: String)
 }

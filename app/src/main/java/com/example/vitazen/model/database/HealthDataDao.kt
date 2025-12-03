@@ -24,4 +24,7 @@ interface HealthDataDao {
 
     @Query("SELECT * FROM health_data WHERE uid = :uid AND lastUpdate >= :start AND lastUpdate < :end LIMIT 1")
     suspend fun getHealthDataByUidAndDate(uid: String, start: Long, end: Long): HealthData?
+    
+    @Query("DELETE FROM health_data WHERE uid = :uid")
+    suspend fun deleteHealthData(uid: String)
 }
