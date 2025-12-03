@@ -19,8 +19,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vitazen.model.database.VitaZenDatabase
 import com.example.vitazen.model.repository.UserRepository
@@ -46,11 +48,378 @@ fun SettingsScreen(
     val viewModel: SettingsViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
             @Suppress("UNCHECKED_CAST")
-            return SettingsViewModel(userRepository) as T
+            return SettingsViewModel(userRepository, context) as T
         }
     })
 
     val uiState by viewModel.uiState.collectAsState()
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showDeleteDataDialog by remember { mutableStateOf(false) }
+    var showEditNameDialog by remember { mutableStateOf(false) }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+
+    // Edit Name Dialog
+    if (showEditNameDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showEditNameDialog = false
+                newName = ""
+            },
+            title = { 
+                Text(
+                    "Chỉnh sửa tên",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        "Nhập tên mới của bạn:",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        placeholder = { Text("Tên hiển thị") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF7C4DFF),
+                            unfocusedBorderColor = Color(0xFFE0E0E0)
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color(0xFF7C4DFF)
+                            )
+                        }
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newName.isNotBlank()) {
+                            viewModel.updateUserName(newName)
+                            showEditNameDialog = false
+                            newName = ""
+                        } else {
+                            Toast.makeText(context, "Tên không được để trống", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF7C4DFF)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Lưu", fontWeight = FontWeight.Medium)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { 
+                        showEditNameDialog = false
+                        newName = ""
+                    },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Hủy")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Change Password Dialog
+    if (showChangePasswordDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showChangePasswordDialog = false
+                currentPassword = ""
+                newPassword = ""
+                confirmPassword = ""
+            },
+            title = { 
+                Text(
+                    "Đổi mật khẩu",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = currentPassword,
+                        onValueChange = { currentPassword = it },
+                        label = { Text("Mật khẩu hiện tại") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF7C4DFF),
+                            unfocusedBorderColor = Color(0xFFE0E0E0)
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = Color(0xFF7C4DFF)
+                            )
+                        }
+                    )
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
+                        label = { Text("Mật khẩu mới") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF7C4DFF),
+                            unfocusedBorderColor = Color(0xFFE0E0E0)
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = Color(0xFFFF6E40)
+                            )
+                        }
+                    )
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = { Text("Xác nhận mật khẩu mới") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF7C4DFF),
+                            unfocusedBorderColor = Color(0xFFE0E0E0)
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = Color(0xFF00E676)
+                            )
+                        }
+                    )
+                    Text(
+                        "Mật khẩu phải có ít nhất 6 ký tự",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        when {
+                            currentPassword.isBlank() || newPassword.isBlank() || confirmPassword.isBlank() -> {
+                                Toast.makeText(context, "Vui lòng điền đầy đủ thông tin", Toast.LENGTH_SHORT).show()
+                            }
+                            newPassword.length < 6 -> {
+                                Toast.makeText(context, "Mật khẩu mới phải có ít nhất 6 ký tự", Toast.LENGTH_SHORT).show()
+                            }
+                            newPassword != confirmPassword -> {
+                                Toast.makeText(context, "Mật khẩu mới không khớp", Toast.LENGTH_SHORT).show()
+                            }
+                            else -> {
+                                viewModel.changePassword(currentPassword, newPassword)
+                                showChangePasswordDialog = false
+                                currentPassword = ""
+                                newPassword = ""
+                                confirmPassword = ""
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF6E40)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Đổi mật khẩu", fontWeight = FontWeight.Medium)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { 
+                        showChangePasswordDialog = false
+                        currentPassword = ""
+                        newPassword = ""
+                        confirmPassword = ""
+                    },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Hủy")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Logout Dialog
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { 
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Logout,
+                        contentDescription = null,
+                        tint = Color(0xFFFF5252),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Text(
+                        "Đăng xuất",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                }
+            },
+            text = { 
+                Text(
+                    "Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?",
+                    fontSize = 16.sp,
+                    color = Color(0xFF2D3748)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.logout()
+                        showLogoutDialog = false
+                        // Navigate to welcome screen
+                        android.content.Intent(context, com.example.vitazen.MainActivity::class.java).also {
+                            it.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            context.startActivity(it)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF5252)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Đăng xuất", fontWeight = FontWeight.Medium)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showLogoutDialog = false },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Hủy")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Delete Data Dialog
+    if (showDeleteDataDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDataDialog = false },
+            title = { 
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        tint = Color(0xFFFF5252),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Text(
+                        "Xóa dữ liệu cũ",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                }
+            },
+            text = { 
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Bạn có chắc chắn muốn xóa tất cả dữ liệu quá 90 ngày?",
+                        fontSize = 16.sp,
+                        color = Color(0xFF2D3748)
+                    )
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFEBEE)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = Color(0xFFFF5252),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                "Hành động này không thể hoàn tác",
+                                fontSize = 13.sp,
+                                color = Color(0xFFD32F2F),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteOldData()
+                        showDeleteDataDialog = false
+                        Toast.makeText(context, "Đã xóa dữ liệu cũ", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF5252)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Xóa", fontWeight = FontWeight.Medium)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showDeleteDataDialog = false },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Hủy")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -154,7 +523,36 @@ fun SettingsScreen(
                     subtitle = "Xóa dữ liệu quá 90 ngày",
                     icon = Icons.Default.Delete,
                     color = Color(0xFFFF5252),
-                    onClick = { viewModel.deleteOldData() }
+                    onClick = { showDeleteDataDialog = true }
+                )
+            }
+
+            // Account Settings Section
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                SectionTitle(title = "Tài khoản")
+            }
+
+            item {
+                SettingsClickableCard(
+                    title = "Chỉnh sửa tên",
+                    subtitle = "Thay đổi tên hiển thị",
+                    icon = Icons.Default.Edit,
+                    color = Color(0xFF7C4DFF),
+                    onClick = { 
+                        newName = uiState.userName
+                        showEditNameDialog = true 
+                    }
+                )
+            }
+
+            item {
+                SettingsClickableCard(
+                    title = "Đổi mật khẩu",
+                    subtitle = "Cập nhật mật khẩu đăng nhập",
+                    icon = Icons.Default.Lock,
+                    color = Color(0xFFFF6E40),
+                    onClick = { showChangePasswordDialog = true }
                 )
             }
 
@@ -162,17 +560,6 @@ fun SettingsScreen(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 SectionTitle(title = "Cài đặt ứng dụng")
-            }
-
-            item {
-                SettingsSwitchCard(
-                    title = "Chế độ tối",
-                    subtitle = "Giao diện tối cho mắt",
-                    icon = Icons.Default.DarkMode,
-                    color = Color(0xFF7C4DFF),
-                    checked = uiState.darkModeEnabled,
-                    onCheckedChange = { viewModel.toggleDarkMode(it) }
-                )
             }
 
             item {
@@ -209,6 +596,21 @@ fun SettingsScreen(
                     color = Color(0xFF9E9E9E),
                     onClick = { /* No action */ },
                     hasArrow = false
+                )
+            }
+
+            // Logout Section
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            item {
+                SettingsClickableCard(
+                    title = "Đăng xuất",
+                    subtitle = "Thoát khỏi tài khoản hiện tại",
+                    icon = Icons.Default.Logout,
+                    color = Color(0xFFFF5252),
+                    onClick = { showLogoutDialog = true }
                 )
             }
 
