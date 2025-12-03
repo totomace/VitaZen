@@ -190,6 +190,12 @@ fun AppNavGraph() {
                         2 -> navController.navigate(Routes.HISTORY) { launchSingleTop = true }
                         3 -> navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
                     }
+                },
+                onStatsClick = {
+                    navController.navigate(Routes.NOTE)
+                },
+                onHistoryClick = {
+                    navController.navigate(Routes.HISTORY) { launchSingleTop = true }
                 }
             )
         }
@@ -290,6 +296,27 @@ fun AppNavGraph() {
                     }
                 })
             }
+        }
+        composable(
+            route = Routes.NOTE,
+            enterTransition = {
+                fadeIn(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleIn(initialScale = 0.96f, animationSpec = tween(ANIMATION_DURATION))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
+            },
+            popExitTransition = {
+                fadeOut(animationSpec = tween(ANIMATION_DURATION)) +
+                scaleOut(targetScale = 1.04f, animationSpec = tween(ANIMATION_DURATION))
+            }
+        ) {
+            com.example.vitazen.ui.note.NoteScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }

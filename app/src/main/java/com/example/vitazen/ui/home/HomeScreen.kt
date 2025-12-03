@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Note
 import androidx.compose.material3.*
 import androidx.compose.ui.draw.shadow
 import androidx.compose.runtime.*
@@ -486,8 +487,8 @@ fun QuickActionsRow(
 
         Box(modifier = Modifier.weight(1f)) {
             QuickActionButton(
-                title = "Biểu đồ",
-                icon = Icons.AutoMirrored.Filled.ShowChart,
+                title = "Note",
+                icon = Icons.Default.Note,
                 color = Green500,
                 onClick = onStatsClick
             )

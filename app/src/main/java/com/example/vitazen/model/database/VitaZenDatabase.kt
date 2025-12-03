@@ -9,14 +9,16 @@ import com.example.vitazen.model.data.Reminder
 import com.example.vitazen.model.data.User
 import com.example.vitazen.model.data.HealthData
 import com.example.vitazen.model.data.HealthHistory
+import com.example.vitazen.model.data.Note
+import com.example.vitazen.model.dao.NoteDao
 
 /**
  * Room Database singleton cho VitaZen app.
- * Chứa 5 tables: User, History, Reminder, HealthData, HealthHistory.
+ * Chứa 6 tables: User, History, Reminder, HealthData, HealthHistory, Note.
  */
 @Database(
-    entities = [User::class, History::class, Reminder::class, HealthData::class, HealthHistory::class],
-    version = 4, // tăng version để Room cập nhật table mới
+    entities = [User::class, History::class, Reminder::class, HealthData::class, HealthHistory::class, Note::class],
+    version = 5, // tăng version để Room cập nhật table mới
     exportSchema = false
 )
 abstract class VitaZenDatabase : RoomDatabase() {
@@ -26,6 +28,7 @@ abstract class VitaZenDatabase : RoomDatabase() {
     abstract fun reminderDao(): ReminderDao
     abstract fun healthDataDao(): HealthDataDao
     abstract fun healthHistoryDao(): HealthHistoryDao
+    abstract fun noteDao(): NoteDao
 
     companion object {
         @Volatile
