@@ -1,45 +1,33 @@
 package com.example.vitazen.model.database
 
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import androidx.room.Update
+import androidx.room.*
 import com.example.vitazen.model.data.Reminder
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Data Access Object cho Reminder entity.
- * Định nghĩa các operations CRUD cho Reminder table.
- */
 @Dao
 interface ReminderDao {
-    
+
+    // Query tất cả reminders của user hiện tại
+    @Query("SELECT * FROM reminders WHERE uid = :uid ORDER BY id DESC")
+    fun getRemindersByUid(uid: String): Flow<List<Reminder>>
+
+    // Query reminder theo ID
+    @Query("SELECT * FROM reminders WHERE id = :id AND uid = :uid")
+    suspend fun getReminderById(id: Long, uid: String): Reminder?
+
+    // Insert reminder
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertReminder(reminder: Reminder)
-    
-    @Query("SELECT * FROM reminders WHERE id = :id")
-    suspend fun getReminderById(id: Long): Reminder?
-    
-    @Query("SELECT * FROM reminders WHERE userId = :userId ORDER BY time ASC")
-    fun getRemindersByUserId(userId: String): Flow<List<Reminder>>
-    
-    @Query("SELECT * FROM reminders WHERE userId = :userId AND isActive = 1 ORDER BY time ASC")
-    fun getActiveRemindersByUserId(userId: String): Flow<List<Reminder>>
-    
+    suspend fun insertReminder(reminder: Reminder): Long
+
+    // Update reminder
     @Update
     suspend fun updateReminder(reminder: Reminder)
-    
-    @Query("UPDATE reminders SET isActive = :isActive WHERE id = :id")
-    suspend fun updateReminderStatus(id: Long, isActive: Boolean)
-    
+
+    // Delete reminder
     @Delete
     suspend fun deleteReminder(reminder: Reminder)
-    
-    @Query("DELETE FROM reminders WHERE userId = :userId")
-    suspend fun deleteAllRemindersByUserId(userId: String)
-    
-    @Query("SELECT * FROM reminders ORDER BY time ASC")
-    fun getAllReminders(): Flow<List<Reminder>>
+
+    // Delete all reminders của user
+    @Query("DELETE FROM reminders WHERE uid = :uid")
+    suspend fun deleteAllByUid(uid: String)
 }
