@@ -44,6 +44,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     private fun loadSampleReminders() {
         val sampleReminders = listOf(
             Reminder(
+                id = 1, // ID duy nhất
                 uid = "user1",
                 title = "Uống nước buổi sáng",
                 type = ReminderType.WATER.name,
@@ -54,6 +55,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
                 isEnabled = true
             ),
             Reminder(
+                id = 2, // ID duy nhất
                 uid = "user1",
                 title = "Uống thuốc",
                 type = ReminderType.MEDICINE.name,
@@ -64,6 +66,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
                 isEnabled = false
             ),
             Reminder(
+                id = 3, // ID duy nhất
                 uid = "user1",
                 title = "Tập thể dục",
                 type = ReminderType.EXERCISE.name,
@@ -99,7 +102,11 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
                 // Chuyển đổi List<Int> thành JSON string đơn giản
                 val daysJson = daysOfWeek.joinToString(",", "[", "]")
 
+                // Tạo ID duy nhất dựa trên timestamp
+                val newId = System.currentTimeMillis()
+                
                 val reminder = Reminder(
+                    id = newId,
                     uid = uid,
                     title = title,
                     type = type.name,
