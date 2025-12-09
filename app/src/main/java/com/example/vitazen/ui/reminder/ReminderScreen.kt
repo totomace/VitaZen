@@ -1,5 +1,6 @@
 package com.example.vitazen.ui.reminder
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -67,46 +68,55 @@ fun ReminderScreen(
         }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }, topBar = {
-        TopAppBar(
-            title = {
-                Text(
-                    "Nhắc nhở uống nước",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Nhắc nhở uống nước",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2196F3)
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = Color(0xFF2196F3)
                 )
-            }, colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                titleContentColor = Color.White
             )
-        )
-    }, floatingActionButton = {
-        FloatingActionButton(
-            onClick = { viewModel.showAddDialog() },
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = Color.White
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add, contentDescription = "Thêm nhắc nhở"
-            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { viewModel.showAddDialog() },
+                containerColor = Color(0xFF2196F3),
+                contentColor = Color.White
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Thêm nhắc nhở"
+                )
+            }
         }
-    }) { paddingValues ->
+    ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background)
+                .background(Color.White)
         ) {
             when {
                 isLoading && reminders.isEmpty() -> {
                     CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
+                        modifier = Modifier.align(Alignment.Center),
+                        color = Color(0xFF2196F3)
                     )
                 }
 
                 reminders.isEmpty() -> {
                     EmptyReminderState(
-                        onAddClick = { viewModel.showAddDialog() })
+                        onAddClick = { viewModel.showAddDialog() }
+                    )
                 }
 
                 else -> {
@@ -114,7 +124,8 @@ fun ReminderScreen(
                         reminders = reminders,
                         onToggle = { viewModel.toggleReminder(it) },
                         onEdit = { viewModel.startEditing(it) },
-                        onDelete = { viewModel.deleteReminder(it) })
+                        onDelete = { viewModel.deleteReminder(it) }
+                    )
                 }
             }
         }
@@ -126,7 +137,8 @@ fun ReminderScreen(
             onDismiss = { viewModel.hideAddDialog() },
             onConfirm = { title, type, interval, amount, start, end, days ->
                 viewModel.addReminder(title, type, interval, amount, start, end, days)
-            })
+            }
+        )
     }
 
     // Edit Dialog
@@ -136,7 +148,8 @@ fun ReminderScreen(
             onDismiss = { viewModel.cancelEditing() },
             onConfirm = { updated ->
                 viewModel.updateReminder(updated)
-            })
+            }
+        )
     }
 }
 
@@ -149,35 +162,42 @@ fun ReminderList(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            top = 16.dp,
+            end = 16.dp,
+            bottom = 88.dp  // THÊM PADDING ĐỂ FAB KHÔNG CHE NÚT XÓA
+        ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(items = reminders, key = { it.id } // ⬅️ QUAN TRỌNG: Key để tránh xóa nhầm
-        ) { reminder ->
+        items(items = reminders, key = { it.id }) { reminder ->
             ReminderCard(
                 reminder = reminder,
                 onToggle = { onToggle(reminder) },
                 onEdit = { onEdit(reminder) },
-                onDelete = { onDelete(reminder) })
+                onDelete = { onDelete(reminder) }
+            )
         }
     }
 }
 
 @Composable
 fun ReminderCard(
-    reminder: Reminder, onToggle: () -> Unit, onEdit: () -> Unit, onDelete: () -> Unit
+    reminder: Reminder,
+    onToggle: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (reminder.isEnabled) MaterialTheme.colorScheme.surfaceVariant
-            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = Color.White
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
@@ -191,14 +211,15 @@ fun ReminderCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
                     // Icon
                     Box(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF2196F3).copy(alpha = 0.2f)),
+                            .background(Color(0xFF2196F3).copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -214,10 +235,10 @@ fun ReminderCard(
                     // Title
                     Text(
                         text = reminder.title,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = if (reminder.isEnabled) MaterialTheme.colorScheme.onSurface
-                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        color = if (reminder.isEnabled) Color(0xFF212121)
+                        else Color(0xFF757575)
                     )
                 }
 
@@ -226,7 +247,8 @@ fun ReminderCard(
                     checked = reminder.isEnabled,
                     onCheckedChange = { onToggle() },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White, checkedTrackColor = Color(0xFF2196F3)
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = Color(0xFF2196F3)
                     )
                 )
             }
@@ -266,14 +288,15 @@ fun ReminderCard(
 
             // Footer: Action buttons
             Row(
-                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
             ) {
                 // Edit button
                 IconButton(onClick = onEdit) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Chỉnh sửa",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = Color(0xFF2196F3)
                     )
                 }
 
@@ -289,7 +312,7 @@ fun ReminderCard(
         }
     }
 
-    // Delete confirmation
+    // Delete confirmation dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -307,7 +330,8 @@ fun ReminderCard(
                     onClick = {
                         showDeleteDialog = false
                         onDelete()
-                    }, colors = ButtonDefaults.buttonColors(
+                    },
+                    colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFF44336)
                     )
                 ) {
@@ -318,13 +342,17 @@ fun ReminderCard(
                 TextButton(onClick = { showDeleteDialog = false }) {
                     Text("Hủy")
                 }
-            })
+            }
+        )
     }
 }
 
 @Composable
 fun InfoRow(
-    icon: ImageVector, label: String, value: String, color: Color
+    icon: ImageVector,
+    label: String,
+    value: String,
+    color: Color
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -332,7 +360,8 @@ fun InfoRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
         ) {
             Icon(
                 imageVector = icon,
@@ -344,14 +373,14 @@ fun InfoRow(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color(0xFF757575)
             )
         }
         Text(
             text = value,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = Color(0xFF212121)
         )
     }
 }
@@ -365,34 +394,37 @@ fun AddReminderDialog(
     var title by remember { mutableStateOf("Uống nước") }
     var waterAmount by remember { mutableStateOf("250") }
     var intervalValue by remember { mutableStateOf("30") }
-    var intervalUnit by remember { mutableStateOf("minutes") } // "minutes" or "hours"
+    var intervalUnit by remember { mutableStateOf("minutes") }
     var startTime by remember { mutableStateOf("08:00") }
     var endTime by remember { mutableStateOf("22:00") }
 
     AlertDialog(
-        onDismissRequest = onDismiss, modifier = Modifier.fillMaxWidth()
+        onDismissRequest = onDismiss,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = Color.White
             )
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Title
                 Text(
                     text = "Thêm nhắc nhở mới",
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF212121)
                 )
 
-                Divider()
+                HorizontalDivider(color = Color(0xFFE0E0E0))
 
                 // Tiêu đề
                 OutlinedTextField(
@@ -403,7 +435,8 @@ fun AddReminderDialog(
                     singleLine = true,
                     leadingIcon = {
                         Icon(Icons.Default.Title, contentDescription = null)
-                    })
+                    }
+                )
 
                 // Lượng nước
                 OutlinedTextField(
@@ -415,16 +448,16 @@ fun AddReminderDialog(
                     singleLine = true,
                     leadingIcon = {
                         Icon(Icons.Default.WaterDrop, contentDescription = null)
-                    })
+                    }
+                )
 
                 // Khoảng cách
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Khoảng cách mỗi lần",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF212121)
                     )
 
                     Row(
@@ -442,27 +475,25 @@ fun AddReminderDialog(
                             singleLine = true,
                             leadingIcon = {
                                 Icon(Icons.Default.Schedule, contentDescription = null)
-                            })
+                            }
+                        )
 
-                        // Radio buttons for unit
                         Row(
                             modifier = Modifier.weight(1f),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(
                                     selected = intervalUnit == "minutes",
-                                    onClick = { intervalUnit = "minutes" })
+                                    onClick = { intervalUnit = "minutes" }
+                                )
                                 Text("Phút")
                             }
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(
                                     selected = intervalUnit == "hours",
-                                    onClick = { intervalUnit = "hours" })
+                                    onClick = { intervalUnit = "hours" }
+                                )
                                 Text("Giờ")
                             }
                         }
@@ -470,13 +501,12 @@ fun AddReminderDialog(
                 }
 
                 // Thời gian bắt đầu và kết thúc
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Thời gian trong ngày",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF212121)
                     )
 
                     Row(
@@ -492,7 +522,8 @@ fun AddReminderDialog(
                             singleLine = true,
                             leadingIcon = {
                                 Icon(Icons.Default.Schedule, contentDescription = null)
-                            })
+                            }
+                        )
 
                         OutlinedTextField(
                             value = endTime,
@@ -503,11 +534,12 @@ fun AddReminderDialog(
                             singleLine = true,
                             leadingIcon = {
                                 Icon(Icons.Default.Schedule, contentDescription = null)
-                            })
+                            }
+                        )
                     }
                 }
 
-                Divider()
+                HorizontalDivider(color = Color(0xFFE0E0E0))
 
                 // Action buttons
                 Row(
@@ -516,7 +548,7 @@ fun AddReminderDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Hủy")
+                        Text("Hủy", color = Color(0xFF757575))
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -540,8 +572,9 @@ fun AddReminderDialog(
                                 endTime,
                                 listOf(1, 2, 3, 4, 5, 6, 7)
                             )
-                        }, colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2196F3)
                         )
                     ) {
                         Icon(Icons.Default.Check, contentDescription = null)
@@ -557,7 +590,9 @@ fun AddReminderDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditReminderDialog(
-    reminder: Reminder, onDismiss: () -> Unit, onConfirm: (Reminder) -> Unit
+    reminder: Reminder,
+    onDismiss: () -> Unit,
+    onConfirm: (Reminder) -> Unit
 ) {
     var title by remember { mutableStateOf(reminder.title) }
     var waterAmount by remember { mutableStateOf(reminder.waterAmountMl.toString()) }
@@ -579,28 +614,31 @@ fun EditReminderDialog(
     var endTime by remember { mutableStateOf(reminder.endTime) }
 
     AlertDialog(
-        onDismissRequest = onDismiss, modifier = Modifier.fillMaxWidth()
+        onDismissRequest = onDismiss,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = Color.White
             )
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
                     text = "Chỉnh sửa nhắc nhở",
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF212121)
                 )
 
-                Divider()
+                HorizontalDivider(color = Color(0xFFE0E0E0))
 
                 OutlinedTextField(
                     value = title,
@@ -608,7 +646,8 @@ fun EditReminderDialog(
                     label = { Text("Tiêu đề") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Title, contentDescription = null) })
+                    leadingIcon = { Icon(Icons.Default.Title, contentDescription = null) }
+                )
 
                 OutlinedTextField(
                     value = waterAmount,
@@ -617,15 +656,15 @@ fun EditReminderDialog(
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.WaterDrop, contentDescription = null) })
+                    leadingIcon = { Icon(Icons.Default.WaterDrop, contentDescription = null) }
+                )
 
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Khoảng cách mỗi lần",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF212121)
                     )
 
                     Row(
@@ -641,11 +680,8 @@ fun EditReminderDialog(
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true,
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Schedule, contentDescription = null
-                                )
-                            })
+                            leadingIcon = { Icon(Icons.Default.Schedule, contentDescription = null) }
+                        )
 
                         Row(
                             modifier = Modifier.weight(1f),
@@ -654,26 +690,27 @@ fun EditReminderDialog(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(
                                     selected = intervalUnit == "minutes",
-                                    onClick = { intervalUnit = "minutes" })
+                                    onClick = { intervalUnit = "minutes" }
+                                )
                                 Text("Phút")
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(
                                     selected = intervalUnit == "hours",
-                                    onClick = { intervalUnit = "hours" })
+                                    onClick = { intervalUnit = "hours" }
+                                )
                                 Text("Giờ")
                             }
                         }
                     }
                 }
 
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Thời gian trong ngày",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF212121)
                     )
 
                     Row(
@@ -686,11 +723,8 @@ fun EditReminderDialog(
                             label = { Text("Bắt đầu") },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Schedule, contentDescription = null
-                                )
-                            })
+                            leadingIcon = { Icon(Icons.Default.Schedule, contentDescription = null) }
+                        )
 
                         OutlinedTextField(
                             value = endTime,
@@ -698,21 +732,19 @@ fun EditReminderDialog(
                             label = { Text("Kết thúc") },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Schedule, contentDescription = null
-                                )
-                            })
+                            leadingIcon = { Icon(Icons.Default.Schedule, contentDescription = null) }
+                        )
                     }
                 }
 
-                Divider()
+                HorizontalDivider(color = Color(0xFFE0E0E0))
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Hủy")
+                        Text("Hủy", color = Color(0xFF757575))
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -736,8 +768,9 @@ fun EditReminderDialog(
                                     endTime = endTime
                                 )
                             )
-                        }, colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2196F3)
                         )
                     ) {
                         Icon(Icons.Default.Check, contentDescription = null)
@@ -774,7 +807,7 @@ fun EmptyReminderState(
             text = "Chưa có nhắc nhở nào",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color = Color(0xFF212121)
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -782,15 +815,17 @@ fun EmptyReminderState(
         Text(
             text = "Thêm nhắc nhở uống nước để giữ gìn sức khỏe",
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = Color(0xFF757575)
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = onAddClick, colors = ButtonDefaults.buttonColors(
+            onClick = onAddClick,
+            colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF2196F3)
-            ), modifier = Modifier.size(width = 200.dp, height = 56.dp)
+            ),
+            modifier = Modifier.size(width = 200.dp, height = 56.dp)
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
@@ -799,7 +834,7 @@ fun EmptyReminderState(
     }
 }
 
-// Helper function
+// Helper functions
 fun formatInterval(minutes: Int): String {
     return if (minutes >= 60) {
         if (minutes % 60 == 0) {
@@ -812,40 +847,10 @@ fun formatInterval(minutes: Int): String {
     }
 }
 
-fun getReminderTypeIcon(type: ReminderType): ImageVector = when (type) {
-    ReminderType.WATER -> Icons.Default.WaterDrop
-    ReminderType.MEDICINE -> Icons.Default.MedicalServices
-    ReminderType.EXERCISE -> Icons.Default.FitnessCenter
-    ReminderType.CHECKUP -> Icons.Default.HealthAndSafety
-    ReminderType.CUSTOM -> Icons.Default.NotificationsActive
-}
-
-fun getReminderTypeColor(type: ReminderType): Color = when (type) {
-    ReminderType.WATER -> Color(0xFF2196F3)
-    ReminderType.MEDICINE -> Color(0xFFF44336)
-    ReminderType.EXERCISE -> Color(0xFF4CAF50)
-    ReminderType.CHECKUP -> Color(0xFFFF9800)
-    ReminderType.CUSTOM -> Color(0xFF9C27B0)
-}
-
-
-// Thêm vào CUỐI FILE:
-
-
 @Preview(showBackground = true)
 @Composable
-fun AddDialogPreview() {
+fun ReminderScreenPreview() {
     MaterialTheme {
-        AddReminderDialog(onDismiss = {}, onConfirm = { _, _, _, _, _, _, _ -> })
-    }
-}
-@Preview(showBackground = true)
-@Composable
-fun AddReminderDialogPreview() {
-    MaterialTheme {
-        AddReminderDialog(
-            onDismiss = {},
-            onConfirm = { _, _, _, _, _, _, _ -> }
-        )
+        ReminderScreen()
     }
 }
