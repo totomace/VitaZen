@@ -19,6 +19,42 @@ VitaZen là một ứng dụng di động được phát triển trên nền t�
 - **Navigation Component**: Điều hướng giữa các màn hình
 - **Material Design 3**: Thiết kế giao diện theo chuẩn Material Design
 
+## Package Structure 
+
+ com.example.vitazen/
+├── 📦 model/
+│   ├── data/              # Entities (User, HealthData, Reminder...)
+│   ├── database/          # DAOs & Database class
+│   └── repository/        # Repository pattern
+│
+├── 📱 ui/
+│   ├── home/             # Home screen
+│   ├── reminder/         # Reminder screen
+│   ├── history/          # History screen
+│   ├── profile/          # Profile screen
+│   ├── settings/         # Settings screen
+│   ├── login/            # Login screen
+│   ├── register/         # Register screen
+│   ├── note/             # Note screen
+│   ├── components/       # Reusable UI components
+│   └── theme/            # Theme & styling
+│
+├── 🎯 viewmodel/         # ViewModels (Business logic)
+│   ├── HomeViewModel.kt
+│   ├── ReminderViewModel.kt
+│   └── ...
+│
+├── 🧭 navigation/        # Navigation logic
+│   ├── AppNavGraph.kt
+│   ├── Routes.kt
+│   └── SplashScreen.kt
+│
+├── 🛠️ util/              # Utilities
+│   ├── ReminderNotificationHelper.kt
+│   ├── EmailValidator.kt
+│   └── Extensions.kt
+│
+└── MainActivity.kt       # Entry point
 ## Cài đặt
 
 ### Yêu cầu hệ thống
@@ -30,4 +66,4 @@ VitaZen là một ứng dụng di động được phát triển trên nền t�
 
 1. Clone dự án từ repository:
    ```bash
-   git clone https://github.com/your-username/vitazen.git
+   git clone https://github.com/totomace/VitaZen.git
