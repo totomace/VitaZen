@@ -105,7 +105,33 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
-
+// Thêm vào ReminderViewModel
+fun testNotificationNow() {
+    viewModelScope.launch {
+        try {
+            // Tạo reminder test với thời gian 1 phút sau
+            val testReminder = Reminder(
+                id = 999,
+                uid = auth.currentUser?.uid ?: "test",
+                title = "TEST - Uống nước",
+                type = "WATER",
+                intervalMinutes = 1,
+                waterAmountMl = 250,
+                startTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                    .format(java.util.Date(System.currentTimeMillis() + 60000)), // 1 minute from now
+                endTime = "23:59",
+                daysOfWeek = "[1,2,3,4,5,6,7]",
+                isEnabled = true
+            )
+            
+            notificationHelper.scheduleReminder(testReminder)
+            _successMessage.value = "Test notification sẽ hiện sau 1 phút!"
+            
+        } catch (e: Exception) {
+            _errorMessage.value = "Lỗi test: ${e.message}"
+        }
+    }
+}
     // Update reminder
     fun updateReminder(reminder: Reminder) {
         viewModelScope.launch {

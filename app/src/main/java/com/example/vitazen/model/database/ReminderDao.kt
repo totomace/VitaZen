@@ -26,7 +26,11 @@ interface ReminderDao {
     // Delete reminder
     @Delete
     suspend fun deleteReminder(reminder: Reminder)
-
+ 
+    // Thêm vào ReminderDao.kt
+    @Query("SELECT * FROM reminders WHERE uid = :uid AND isEnabled = 1")
+    suspend fun getEnabledRemindersSync(uid: String): List<Reminder>
+    
     // Delete all reminders của user
     @Query("DELETE FROM reminders WHERE uid = :uid")
     suspend fun deleteAllByUid(uid: String)

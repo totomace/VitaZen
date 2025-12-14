@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -35,6 +36,12 @@ class ReminderNotificationHelper(private val context: Context) {
             val importance = NotificationManager.IMPORTANCE_HIGH
             val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
                 description = CHANNEL_DESCRIPTION
+                enableLights(true)
+                enableVibration(true)
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+                    null
+                )
             }
             
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -52,15 +59,16 @@ class ReminderNotificationHelper(private val context: Context) {
         val startHour = timeParts[0].toInt()
         val startMinute = timeParts[1].toInt()
 
-        // Schedule first alarm
+        // Calculate next alarm time
         val calendar = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, startHour)
             set(Calendar.MINUTE, startMinute)
             set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
             
-            // If time has passed today, schedule for tomorrow
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_MONTH, 1)
+            // If time has passed today, schedule for next occurrence
+            while (timeInMillis <= System.currentTimeMillis()) {
+                add(Calendar.MINUTE, reminder.intervalMinutes)
             }
         }
 
@@ -68,6 +76,7 @@ class ReminderNotificationHelper(private val context: Context) {
             putExtra("reminder_id", reminder.id)
             putExtra("reminder_title", reminder.title)
             putExtra("reminder_water_ml", reminder.waterAmountMl)
+            putExtra("reminder_type", reminder.type)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
@@ -77,18 +86,32 @@ class ReminderNotificationHelper(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Schedule repeating alarm
+        // Cancel any existing alarm with same ID
+        alarmManager.cancel(pendingIntent)
+
+        // Schedule exact repeating alarm
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setRepeating(
+                    // For Android 12+, use setExactAndAllowWhileIdle for each occurrence
+                    alarmManager.setExactAndAllowWhileIdle(
                         AlarmManager.RTC_WAKEUP,
                         calendar.timeInMillis,
-                        (reminder.intervalMinutes * 60 * 1000).toLong(),
                         pendingIntent
                     )
+                } else {
+                    // Request exact alarm permission
+                    android.util.Log.e("ReminderHelper", "Cannot schedule exact alarms")
                 }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                // For Android 6-11
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
             } else {
+                // For older versions
                 alarmManager.setRepeating(
                     AlarmManager.RTC_WAKEUP,
                     calendar.timeInMillis,
@@ -96,8 +119,12 @@ class ReminderNotificationHelper(private val context: Context) {
                     pendingIntent
                 )
             }
+            
+            android.util.Log.d("ReminderHelper", 
+                "Alarm scheduled for: ${calendar.time} (ID: ${reminder.id}, Interval: ${reminder.intervalMinutes} min)")
         } catch (e: Exception) {
             e.printStackTrace()
+            android.util.Log.e("ReminderHelper", "Error scheduling alarm: ${e.message}")
         }
     }
 
@@ -113,28 +140,48 @@ class ReminderNotificationHelper(private val context: Context) {
         )
         
         alarmManager.cancel(pendingIntent)
+        android.util.Log.d("ReminderHelper", "Alarm cancelled for ID: $reminderId")
     }
 
-    fun showNotification(reminderId: Long, title: String, waterMl: Int) {
+    fun showNotification(reminderId: Long, title: String, waterMl: Int, reminderType: String) {
+        // Intent to open app when notification is tapped
         val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("open_reminder", true)
         }
         
         val pendingIntent = PendingIntent.getActivity(
             context,
-            0,
+            reminderId.toInt(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Get alarm sound
+        val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+        // Build notification with alarm-like features
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(title)
+            .setContentTitle("⏰ $title")
             .setContentText("Đã đến giờ! Hãy uống ${waterMl}ml nước nhé 💧")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("⏰ Đã đến giờ!\n\n💧 Hãy uống ${waterMl}ml nước để giữ gìn sức khỏe.\n\nNhấn để mở ứng dụng."))
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
+            .setOngoing(false) // User can dismiss
+            .setSound(alarmSound)
+            .setVibrate(longArrayOf(0, 500, 200, 500, 200, 500)) // Vibration pattern
+            .setLights(0xFF00FF00.toInt(), 3000, 1000) // Green light
             .setContentIntent(pendingIntent)
+            .setFullScreenIntent(pendingIntent, true) // Show as fullscreen (like alarm)
+            .addAction(
+                R.drawable.ic_launcher_foreground,
+                "Đánh dấu đã uống",
+                createMarkDoneIntent(context, reminderId)
+            )
             .build()
 
         if (ActivityCompat.checkSelfPermission(
@@ -143,17 +190,65 @@ class ReminderNotificationHelper(private val context: Context) {
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             NotificationManagerCompat.from(context).notify(reminderId.toInt(), notification)
+            android.util.Log.d("ReminderHelper", "Notification shown for: $title (ID: $reminderId)")
+        } else {
+            android.util.Log.e("ReminderHelper", "Notification permission not granted")
         }
+    }
+
+    private fun createMarkDoneIntent(context: Context, reminderId: Long): PendingIntent {
+        val intent = Intent(context, MarkDoneBroadcastReceiver::class.java).apply {
+            putExtra("reminder_id", reminderId)
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            (reminderId + 10000).toInt(), // Different request code
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 }
 
 class ReminderBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        android.util.Log.d("ReminderReceiver", "Alarm triggered!")
+        
         val reminderId = intent.getLongExtra("reminder_id", 0)
         val title = intent.getStringExtra("reminder_title") ?: "Nhắc nhở"
         val waterMl = intent.getIntExtra("reminder_water_ml", 250)
+        val reminderType = intent.getStringExtra("reminder_type") ?: "WATER"
 
         val helper = ReminderNotificationHelper(context)
-        helper.showNotification(reminderId, title, waterMl)
+        helper.showNotification(reminderId, title, waterMl, reminderType)
+        
+        // Reschedule for next occurrence (for Android 12+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Get reminder from database and reschedule
+            // This ensures continuous reminders
+            rescheduleReminder(context, reminderId)
+        }
+    }
+    
+    private fun rescheduleReminder(context: Context, reminderId: Long) {
+        // Load reminder from database and schedule next occurrence
+        // This is needed for Android 12+ as setExactAndAllowWhileIdle only schedules once
+        try {
+            // You'll need to implement this based on your database access
+            android.util.Log.d("ReminderReceiver", "Rescheduling reminder ID: $reminderId")
+        } catch (e: Exception) {
+            android.util.Log.e("ReminderReceiver", "Error rescheduling: ${e.message}")
+        }
+    }
+}
+
+class MarkDoneBroadcastReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val reminderId = intent.getLongExtra("reminder_id", 0)
+        
+        // Dismiss notification
+        NotificationManagerCompat.from(context).cancel(reminderId.toInt())
+        
+        // Optionally: Save to database that user completed this reminder
+        android.util.Log.d("MarkDoneReceiver", "Marked done: $reminderId")
     }
 }

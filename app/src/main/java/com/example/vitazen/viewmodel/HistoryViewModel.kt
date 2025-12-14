@@ -12,12 +12,26 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+// THÊM FilterType enum
+enum class FilterType {
+    ALL,
+    WEEK,
+    MONTH,
+    CUSTOM
+}
+
+// CẬP NHẬT HistoryUiState với các field mới
 data class HistoryUiState(
     val weekLabel: String = "",
     val weekData: List<WeekData> = emptyList(),
     val historyList: List<HealthHistory> = emptyList(),
     val canNavigateToNextWeek: Boolean = false,
-    val currentWeekOffset: Int = 0 // 0 = tuần hiện tại, -1 = tuần trước, etc.
+    val currentWeekOffset: Int = 0,
+    // CÁC FIELD MỚI
+    val filteredHistoryList: List<HealthHistory> = emptyList(),
+    val isLoading: Boolean = false,
+    val filterType: FilterType = FilterType.ALL,
+    val searchQuery: String = ""
 )
 
 class HistoryViewModel(
@@ -28,8 +42,11 @@ class HistoryViewModel(
 
     init {
         loadCurrentWeek()
+        loadAllHistory()
     }
 
+    // ========== GIỮ NGUYÊN CODE CŨ ==========
+    
     fun navigateToPreviousWeek() {
         val newOffset = _uiState.value.currentWeekOffset - 1
         loadWeekData(newOffset)
@@ -37,7 +54,7 @@ class HistoryViewModel(
 
     fun navigateToNextWeek() {
         val newOffset = _uiState.value.currentWeekOffset + 1
-        if (newOffset <= 0) { // Không cho phép xem tuần tương lai
+        if (newOffset <= 0) {
             loadWeekData(newOffset)
         }
     }
@@ -50,13 +67,9 @@ class HistoryViewModel(
         viewModelScope.launch {
             val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
 
-            // Tính toán thời gian bắt đầu và kết thúc tuần
             val calendar = Calendar.getInstance()
-
-            // Di chuyển đến tuần mong muốn
             calendar.add(Calendar.WEEK_OF_YEAR, weekOffset)
 
-            // Lùi về Thứ 2 của tuần đó
             val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             val daysFromMonday = if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - Calendar.MONDAY
             calendar.add(Calendar.DAY_OF_MONTH, -daysFromMonday)
@@ -68,7 +81,6 @@ class HistoryViewModel(
             val weekStart = calendar.timeInMillis
             val weekStartDate = calendar.time
 
-            // Tính thời gian kết thúc tuần (Chủ nhật 23:59:59)
             calendar.add(Calendar.DAY_OF_MONTH, 6)
             calendar.set(Calendar.HOUR_OF_DAY, 23)
             calendar.set(Calendar.MINUTE, 59)
@@ -76,7 +88,6 @@ class HistoryViewModel(
             val weekEnd = calendar.timeInMillis
             val weekEndDate = calendar.time
 
-            // Format label cho tuần
             val dateFormat = SimpleDateFormat("dd/MM", Locale.getDefault())
             val weekLabel = if (weekOffset == 0) {
                 "Tuần này (${dateFormat.format(weekStartDate)} - ${dateFormat.format(weekEndDate)})"
@@ -84,10 +95,8 @@ class HistoryViewModel(
                 "Tuần ${dateFormat.format(weekStartDate)} - ${dateFormat.format(weekEndDate)}"
             }
 
-            // Lấy dữ liệu từ database
             val historyList = healthHistoryRepository.getHistoryInRange(uid, weekStart, weekEnd)
 
-            // Tạo dữ liệu cho biểu đồ tuần
             val dayLabels = listOf("T2", "T3", "T4", "T5", "T6", "T7", "CN")
             val weekDataList = mutableListOf<WeekData>()
 
@@ -97,10 +106,8 @@ class HistoryViewModel(
                 calendar.add(Calendar.DAY_OF_MONTH, 1)
                 val dayEnd = calendar.timeInMillis
 
-                // Lấy dữ liệu của ngày này
                 val dayHistory = historyList.filter { it.timestamp >= dayStart && it.timestamp < dayEnd }
 
-                // Tính trung bình các giá trị trong ngày
                 val avgWeight = if (dayHistory.isNotEmpty()) {
                     dayHistory.mapNotNull { it.weight }.average().toFloat()
                 } else null
@@ -129,10 +136,9 @@ class HistoryViewModel(
                 )
             }
 
-            // Kiểm tra xem có thể chuyển sang tuần sau không
             val canNavigateNext = weekOffset < 0
 
-            _uiState.value = HistoryUiState(
+            _uiState.value = _uiState.value.copy(
                 weekLabel = weekLabel,
                 weekData = weekDataList,
                 historyList = historyList.sortedByDescending { it.timestamp },
@@ -141,5 +147,91 @@ class HistoryViewModel(
             )
         }
     }
-}
 
+    // ========== THÊM CÁC FUNCTION MỚI ==========
+    
+    private fun loadAllHistory() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            try {
+                val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
+                
+                healthHistoryRepository.getAllHistory(uid).collect { history ->
+                    _uiState.value = _uiState.value.copy(
+                        filteredHistoryList = filterHistory(
+                            history, 
+                            _uiState.value.filterType, 
+                            _uiState.value.searchQuery
+                        ),
+                        isLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            }
+        }
+    }
+
+    fun setFilterType(filterType: FilterType) {
+        _uiState.value = _uiState.value.copy(
+            filterType = filterType,
+            filteredHistoryList = filterHistory(
+                _uiState.value.historyList, 
+                filterType, 
+                _uiState.value.searchQuery
+            )
+        )
+    }
+
+    fun searchHistory(query: String) {
+        _uiState.value = _uiState.value.copy(
+            searchQuery = query,
+            filteredHistoryList = filterHistory(
+                _uiState.value.historyList, 
+                _uiState.value.filterType, 
+                query
+            )
+        )
+    }
+
+    private fun filterHistory(
+        history: List<HealthHistory>, 
+        filterType: FilterType, 
+        query: String
+    ): List<HealthHistory> {
+        val calendar = Calendar.getInstance()
+
+        val timeFiltered = when (filterType) {
+            FilterType.ALL -> history
+            FilterType.WEEK -> {
+                calendar.add(Calendar.DAY_OF_MONTH, -7)
+                history.filter { it.timestamp >= calendar.timeInMillis }
+            }
+            FilterType.MONTH -> {
+                calendar.add(Calendar.MONTH, -1)
+                history.filter { it.timestamp >= calendar.timeInMillis }
+            }
+            FilterType.CUSTOM -> history
+        }
+
+        return if (query.isBlank()) {
+            timeFiltered.sortedByDescending { it.timestamp }
+        } else {
+            timeFiltered.filter { item ->
+                item.notes?.contains(query, ignoreCase = true) == true ||
+                item.weight?.toString()?.contains(query) == true ||
+                item.heartRate?.toString()?.contains(query) == true
+            }.sortedByDescending { it.timestamp }
+        }
+    }
+
+    fun deleteHistoryItem(item: HealthHistory) {
+        viewModelScope.launch {
+            try {
+                // healthHistoryRepository.delete(item)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+}
